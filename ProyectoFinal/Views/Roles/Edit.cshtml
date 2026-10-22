@@ -1,0 +1,22 @@
+@model ProyectoFinal.Models.RolAdminEditViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Editar rol";
+}
+
+<h1>Editar rol</h1>
+<p class="intro">Cambiar el nombre no elimina las asignaciones actuales de usuarios.</p>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="role-assignment-form">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <input asp-for="Id" type="hidden" />
+    <div class="form-group">
+        <label asp-for="Nombre" class="control-label"></label>
+        <input asp-for="Nombre" class="form-control" maxlength="256" autocomplete="off" />
+        <span asp-validation-for="Nombre" class="text-danger"></span>
+    </div>
+    <div class="page-actions">
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver a roles</a>
+    </div>
+</form>

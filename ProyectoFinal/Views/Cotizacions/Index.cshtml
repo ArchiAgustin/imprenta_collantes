@@ -1,75 +1,60 @@
-﻿@model IEnumerable<ProyectoFinal.Models.Cotizacion>
-
+@model IEnumerable<ProyectoFinal.Models.Cotizacion>
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Cotizaciones";
 }
 
-<h1>Cotizaciones</h1>
-
-<p>
+<div class="page-heading-row">
+    <div>
+        <h1>Cotizaciones</h1>
+        <p class="intro">Prepara propuestas con detalle de productos e importes calculados.</p>
+    </div>
     <a class="btn btn-primary" asp-action="Create">Nueva cotización</a>
-</p>
+</div>
+
 @if (!Model.Any())
 {
     <div class="empty-state" role="status"><strong>Aún no hay cotizaciones registradas.</strong><p>Empieza creando el primer registro.</p></div>
 }
 else
 {
-<div class="table-responsive">
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.FechaCreacion)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.FechaVencimiento)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DetalleCotizacion)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Total)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IdClienteNavigation)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IdUsuarioNavigation)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.FechaCreacion)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.FechaVencimiento)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DetalleCotizacion)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Total)
-            </td>
-            <td>
-                @(item.IdClienteNavigation?.Nombre ?? "Sin cliente")
-            </td>
-            <td>
-                @(item.IdUsuarioNavigation?.Email ?? "Sin usuario")
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.IdCotizacion">Editar</a> |
-                <a asp-action="Details" asp-route-id="@item.IdCotizacion">Ver</a> |
-                <a asp-action="Delete" asp-route-id="@item.IdCotizacion">Eliminar</a>
-            </td>
-        </tr>
+    <div class="table-responsive">
+        <table class="table align-middle quote-list-table">
+            <thead>
+                <tr>
+                    <th scope="col">Folio</th>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Emisión</th>
+                    <th scope="col">Vigencia</th>
+                    <th scope="col">Detalle</th>
+                    <th scope="col">Líneas</th>
+                    <th scope="col">Total</th>
+                    <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="folio">#@item.IdCotizacion</td>
+                        <td>@(item.IdClienteNavigation?.Nombre ?? "Sin cliente")</td>
+                        <td>@(item.FechaCreacion?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td>@(item.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="quote-list-description">@(string.IsNullOrWhiteSpace(item.DetalleCotizacion) ? "—" : item.DetalleCotizacion)</td>
+                        <td>@item.DetalleCotizacions.Count</td>
+                        <td class="quote-list-total">@((item.Total ?? 0).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("es-PE")))</td>
+                        <td>
+                            <div class="table-actions">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.IdCotizacion">Ver</a>
+                                <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.IdCotizacion">Editar</a>
+                                <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.IdCotizacion">Eliminar</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
-    </tbody>
-</table>
-</div>
-}
+
+<div class="page-actions"><a class="btn btn-outline-secondary" asp-area="Identity" asp-page="/Usuario/Panel">Volver al panel</a></div>

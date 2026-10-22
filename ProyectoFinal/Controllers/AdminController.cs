@@ -1,80 +1,160 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using System.Data;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ProyectoFinal.Data;
 using ProyectoFinal.Models;
 
-namespace ProyectoFinal.Controllers
+namespace ProyectoFinal.Controllers;
+
+[Authorize(Roles = "Admin")]
+public class AdminController : Controller
 {
-    [Authorize(Roles = "Admin")]
-    public class AdminController : Controller
+    private readonly UserManager<IdentityUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly ApplicationDbContext _context;
+
+    public AdminController(
+        UserManager<IdentityUser> userManager,
+        RoleManager<IdentityRole> roleManager,
+        ApplicationDbContext context)
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        _userManager = userManager;
+        _roleManager = roleManager;
+        _context = context;
+    }
 
-        public AdminController(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
+    public async Task<IActionResult> Index()
+    {
+        var users = await _userManager.Users
+            .OrderBy(user => user.Email)
+            .ToListAsync();
+
+        var model = new List<UsuarioAdminListViewModel>(users.Count);
+        foreach (var user in users)
         {
-            _userManager = userManager;
-            _roleManager = roleManager;
-        }
-
-        // Lista de usuarios
-        public IActionResult Index()
-        {
-            var users = _userManager.Users.ToList();
-            return View(users);
-        }
-
-        // Vista para crear un rol
-        public IActionResult CreateRole() => View();
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateRole(string roleName)
-        {
-            if (!string.IsNullOrWhiteSpace(roleName) && !await _roleManager.RoleExistsAsync(roleName))
+            model.Add(new UsuarioAdminListViewModel
             {
-                await _roleManager.CreateAsync(new IdentityRole(roleName));
-                return RedirectToAction(nameof(Index));
+                Id = user.Id,
+                Correo = user.Email ?? user.UserName ?? "Sin correo",
+                Roles = (await _userManager.GetRolesAsync(user)).ToList()
+            });
+        }
+
+        return View(model);
+    }
+
+    // Legacy link retained as a safe redirect; role management now lives in its own module.
+    [HttpGet]
+    public IActionResult CreateRole() => RedirectToAction("Index", "Roles");
+
+    [HttpGet]
+    public async Task<IActionResult> AssignRole(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return NotFound();
+
+        var model = new AssignRoleViewModel
+        {
+            UserId = user.Id,
+            UserName = user.Email ?? user.UserName ?? user.Id,
+            AvailableRoles = await GetRoleNamesAsync(),
+            SelectedRoles = (await _userManager.GetRolesAsync(user)).ToList()
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignRole(AssignRoleViewModel model)
+    {
+        var user = await _userManager.FindByIdAsync(model.UserId);
+        if (user is null) return NotFound();
+
+        var availableRoles = await GetRoleNamesAsync();
+        var selectedRoles = (model.SelectedRoles ?? new List<string>())
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var invalidRole = selectedRoles.FirstOrDefault(role =>
+            !availableRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
+        if (invalidRole is not null)
+            ModelState.AddModelError(nameof(model.SelectedRoles), "La selección contiene un rol que ya no existe.");
+
+        await using var transaction = _context.Database.IsRelational()
+            ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
+            : null;
+
+        var currentRoles = (await _userManager.GetRolesAsync(user)).ToList();
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var removingAdmin = currentRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase)
+            && !selectedRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase);
+        var removingOwnAdmin = user.Id == currentUserId && removingAdmin;
+        var preserveAdminAssignment = removingOwnAdmin;
+        if (removingOwnAdmin)
+            ModelState.AddModelError(nameof(model.SelectedRoles), "No puedes quitarte el rol Admin de tu propia cuenta; se mantuvo la asignación.");
+
+        var remainingAdministrators = await _userManager.GetUsersInRoleAsync("Admin");
+        if (!removingOwnAdmin
+            && removingAdmin
+            && remainingAdministrators.Count <= 1)
+        {
+            preserveAdminAssignment = true;
+            ModelState.AddModelError(nameof(model.SelectedRoles), "Debe quedar al menos un administrador activo; se mantuvo la asignación.");
+        }
+
+        model.AvailableRoles = availableRoles;
+        model.UserName = user.Email ?? user.UserName ?? user.Id;
+        model.SelectedRoles = preserveAdminAssignment ? currentRoles : selectedRoles;
+        if (!ModelState.IsValid) return View(model);
+
+        var rolesToRemove = currentRoles
+            .Where(role => !selectedRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        var rolesToAdd = selectedRoles
+            .Where(role => !currentRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (rolesToRemove.Length > 0)
+        {
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+            if (!removeResult.Succeeded)
+            {
+                if (transaction is not null) await transaction.RollbackAsync();
+                AddIdentityErrors(removeResult);
+                return View(model);
             }
-
-            ModelState.AddModelError("", "El nombre del rol es inválido o ya existe.");
-            return View();
         }
 
-        // Vista para asignar rol
-        public async Task<IActionResult> AssignRole(string userId)
+        if (rolesToAdd.Length > 0)
         {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user is null) return NotFound();
-            var roles = _roleManager.Roles.ToList();
-
-            var model = new AssignRoleViewModel
+            var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+            if (!addResult.Succeeded)
             {
-                UserId = user.Id,
-                UserName = user.UserName ?? user.Email ?? user.Id,
-                AvailableRoles = roles.Select(r => r.Name).Where(name => name is not null).Select(name => name!).ToList()
-            };
-
-            return View(model);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AssignRole(AssignRoleViewModel model)
-        {
-            var user = await _userManager.FindByIdAsync(model.UserId);
-
-            if (user != null && !string.IsNullOrWhiteSpace(model.SelectedRole) && await _roleManager.RoleExistsAsync(model.SelectedRole))
-            {
-                if (await _userManager.IsInRoleAsync(user, model.SelectedRole))
-                    return RedirectToAction(nameof(Index));
-                var result = await _userManager.AddToRoleAsync(user, model.SelectedRole);
-                if (result.Succeeded) return RedirectToAction(nameof(Index));
-                foreach (var error in result.Errors) ModelState.AddModelError(string.Empty, error.Description);
+                if (transaction is not null) await transaction.RollbackAsync();
+                AddIdentityErrors(addResult);
+                return View(model);
             }
-            else ModelState.AddModelError("", "Usuario o rol inválido.");
-            model.AvailableRoles = _roleManager.Roles.Select(role => role.Name!).ToList();
-            return View(model);
         }
+
+        if (transaction is not null) await transaction.CommitAsync();
+        TempData["Success"] = "Los roles del usuario se actualizaron.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<List<string>> GetRoleNamesAsync() => await _roleManager.Roles
+        .Where(role => role.Name != null)
+        .OrderBy(role => role.Name)
+        .Select(role => role.Name!)
+        .ToListAsync();
+
+    private void AddIdentityErrors(IdentityResult result)
+    {
+        foreach (var error in result.Errors)
+            ModelState.AddModelError(string.Empty, error.Description);
     }
 }

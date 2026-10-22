@@ -1,55 +1,57 @@
-﻿@model ProyectoFinal.Models.Cotizacion
-
+@model ProyectoFinal.Models.Cotizacion
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
-    ViewData["Title"] = "Detalle de cotización";
+    ViewData["Title"] = $"Cotización #{Model.IdCotizacion}";
+    var subtotal = Model.DetalleCotizacions.Sum(linea => decimal.Round((linea.Cantidad ?? 0) * (linea.PrecioUnitario ?? 0), 2, MidpointRounding.AwayFromZero));
+    var igv = decimal.Round(subtotal * 0.18m, 2, MidpointRounding.AwayFromZero);
+    var culture = System.Globalization.CultureInfo.GetCultureInfo("es-PE");
 }
 
-<h1>Detalle de cotización</h1>
-
-<div>
-    <h4>Cotizacion</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FechaCreacion)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FechaCreacion)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FechaVencimiento)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FechaVencimiento)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DetalleCotizacion)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DetalleCotizacion)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Total)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Total)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IdClienteNavigation)
-        </dt>
-        <dd class = "col-sm-10">
-            @(Model.IdClienteNavigation?.Nombre ?? "Sin cliente")
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IdUsuarioNavigation)
-        </dt>
-        <dd class = "col-sm-10">
-            @(Model.IdUsuarioNavigation?.Email ?? "Sin usuario")
-        </dd>
-    </dl>
+<div class="page-heading-row">
+    <div><h1>Cotización #@Model.IdCotizacion</h1><p class="intro">Resumen de cabecera y detalle guardados.</p></div>
+    <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.IdCotizacion">Editar cotización</a>
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.IdCotizacion">Editar</a> |
-    <a asp-action="Index">Volver a cotizaciones</a>
+
+<div class="quote-layout quote-readonly-layout">
+    <section class="quote-card quote-header-card" aria-labelledby="quote-header-heading">
+        <div class="quote-card-heading"><div><h2 id="quote-header-heading">Cabecera</h2><p>Cliente y condiciones</p></div><span class="folio">FOLIO #@Model.IdCotizacion</span></div>
+        <dl class="quote-audit quote-detail-audit">
+            <div><dt>Cliente</dt><dd>@(Model.IdClienteNavigation?.Nombre ?? "Sin cliente")</dd></div>
+            <div><dt>Fecha de emisión</dt><dd>@(Model.FechaCreacion?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
+            <div><dt>Vigencia hasta</dt><dd>@(Model.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "Sin vencimiento")</dd></div>
+            <div><dt>Responsable</dt><dd>@(Model.IdUsuarioNavigation?.Email ?? "Usuario no disponible")</dd></div>
+        </dl>
+        <div class="quote-description"><h3>Descripción del trabajo</h3><p>@(string.IsNullOrWhiteSpace(Model.DetalleCotizacion) ? "Sin indicaciones adicionales." : Model.DetalleCotizacion)</p></div>
+    </section>
+
+    <section class="quote-card quote-detail-card" aria-labelledby="quote-lines-heading">
+        <div class="quote-card-heading"><div><h2 id="quote-lines-heading">Detalle de cotización</h2><p>@Model.DetalleCotizacions.Count línea(s)</p></div></div>
+        @if (Model.DetalleCotizacions.Count == 0)
+        {
+            <div class="empty-state"><p>Esta cotización no contiene líneas de detalle.</p></div>
+        }
+        else
+        {
+            <div class="quote-saved-lines">
+                @foreach (var line in Model.DetalleCotizacions.OrderBy(line => line.IdDetalleCotizacion))
+                {
+                    var lineTotal = decimal.Round((line.Cantidad ?? 0) * (line.PrecioUnitario ?? 0), 2, MidpointRounding.AwayFromZero);
+                    <article class="quote-saved-line">
+                        <div><strong>@(line.IdProductoNavigation?.Nombre ?? "Producto no disponible")</strong><span>@(line.Cantidad ?? 0) × @((line.PrecioUnitario ?? 0).ToString("C2", culture))</span></div>
+                        <strong>@lineTotal.ToString("C2", culture)</strong>
+                    </article>
+                }
+            </div>
+        }
+        <div class="quote-totals quote-saved-totals">
+            <div><span>Subtotal</span><output>@subtotal.ToString("C2", culture)</output></div>
+            <div><span>IGV (18%)</span><output>@igv.ToString("C2", culture)</output></div>
+            <div class="quote-grand-total"><strong>Total</strong><output>@((Model.Total ?? subtotal + igv).ToString("C2", culture))</output></div>
+        </div>
+    </section>
+</div>
+
+<div class="page-actions">
+    <a class="btn btn-outline-secondary" asp-action="Index">Volver a cotizaciones</a>
+    <a class="btn btn-outline-danger" asp-action="Delete" asp-route-id="@Model.IdCotizacion">Eliminar</a>
 </div>

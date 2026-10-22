@@ -45,9 +45,9 @@
         </dd>
     </dl>
     
-    <form asp-action="Delete">
+    <form asp-action="Delete" method="post" class="page-actions">
         <input type="hidden" asp-for="IdCliente" />
-        <input type="submit" value="Eliminar cliente" class="btn btn-danger" /> |
-        <a asp-action="Index">Cancelar</a>
+        <button type="submit" class="btn btn-danger">Eliminar cliente</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver</a>
     </form>
 </div>

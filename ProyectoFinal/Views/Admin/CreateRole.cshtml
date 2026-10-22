@@ -1,14 +1,8 @@
 ﻿@{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
-    ViewData["Title"] = "Crear Rol";
+    ViewData["Title"] = "Roles";
 }
 
-<h2>Crear un nuevo rol</h2>
-
-<form asp-action="CreateRole" method="post">
-    <div class="form-group">
-        <label for="roleName">Nombre del rol:</label>
-        <input type="text" name="roleName" class="form-control" />
-    </div>
-    <button type="submit" class="btn btn-success">Crear</button>
-</form>
+<h1>La gestión de roles se movió</h1>
+<p class="intro">Ahora encontrarás los roles en su propio módulo.</p>
+<a class="btn btn-primary" asp-controller="Roles" asp-action="Index">Abrir roles</a>

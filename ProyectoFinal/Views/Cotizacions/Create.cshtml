@@ -1,49 +1,153 @@
-﻿@model ProyectoFinal.Models.Cotizacion
-
+@using System.Globalization
+@model ProyectoFinal.Models.CotizacionFormViewModel
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Nueva cotización";
 }
 
 <h1>Nueva cotización</h1>
+<p class="intro">Elige el cliente y arma la cotización con productos del catálogo. Los importes se calculan al guardar.</p>
 
-<p class="intro">Registra una cotización básica. El detalle por productos se incorporará en una etapa posterior.</p>
-<div class="row">
-    <div class="col-md-7">
-        <form asp-action="Create" method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="IdCliente" class="control-label">Cliente</label>
-                <select asp-for="IdCliente" class ="form-control" asp-items="ViewBag.IdCliente"></select>
+<form asp-action="Create" method="post" class="quote-editor" data-quote-editor data-tax-rate="0.18" data-next-index="@Model.Lineas.Count">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <div class="quote-layout">
+        <section class="quote-card quote-header-card" aria-labelledby="quote-header-heading">
+            <div class="quote-card-heading">
+                <div>
+                    <h2 id="quote-header-heading">Cabecera</h2>
+                    <p>Cliente y condiciones</p>
+                </div>
+                <span class="folio">NUEVA</span>
             </div>
-            <p class="auth-footnote">La fecha de creación y el usuario se registran automáticamente.</p>
+
             <div class="form-group">
-                <label asp-for="FechaVencimiento" class="control-label">Fecha de vencimiento</label>
-                <input asp-for="FechaVencimiento" class="form-control" />
+                <label asp-for="ClienteId" class="control-label">Cliente</label>
+                <select asp-for="ClienteId" class="form-select">
+                    <option value="">Selecciona un cliente</option>
+                    @foreach (var cliente in Model.Clientes)
+                    {
+                        <option value="@cliente.IdCliente">@cliente.Nombre</option>
+                    }
+                </select>
+                <span asp-validation-for="ClienteId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="FechaVencimiento" class="control-label">Vigencia hasta <span class="field-optional">(opcional)</span></label>
+                <input asp-for="FechaVencimiento" type="date" class="form-control" />
                 <span asp-validation-for="FechaVencimiento" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="DetalleCotizacion" class="control-label">Descripción del trabajo</label>
-                <input asp-for="DetalleCotizacion" class="form-control" />
-                <span asp-validation-for="DetalleCotizacion" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Total" class="control-label">Importe referencial</label>
-                <input asp-for="Total" class="form-control" />
-                <span asp-validation-for="Total" class="text-danger"></span>
-                <small>Importe manual mientras se implementa la cotización por productos.</small>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Guardar cotización" class="btn btn-primary" />
-            </div>
-        </form>
-    </div>
-</div>
 
-<div>
-    <a asp-action="Index">Volver a cotizaciones</a>
-</div>
+            <div class="form-group">
+                <label asp-for="Descripcion" class="control-label">Descripción del trabajo <span class="field-optional">(opcional)</span></label>
+                <textarea asp-for="Descripcion" class="form-control" rows="4" placeholder="Medidas, acabados u otras indicaciones" maxlength="4000"></textarea>
+                <span asp-validation-for="Descripcion" class="text-danger"></span>
+            </div>
+
+            <dl class="quote-audit">
+                <div><dt>Fecha de emisión</dt><dd>@Model.FechaEmision.ToString("dd/MM/yyyy")</dd></div>
+                <div><dt>Responsable</dt><dd>@Model.Usuario</dd></div>
+            </dl>
+            <p class="auth-footnote">La fecha y el responsable se registran automáticamente.</p>
+        </section>
+
+        <section class="quote-card quote-detail-card" aria-labelledby="quote-lines-heading">
+            <div class="quote-card-heading quote-detail-heading">
+                <div>
+                    <h2 id="quote-lines-heading">Detalle de cotización</h2>
+                    <p>Productos, cantidades y precios pactados</p>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-add-line @(Model.Productos.Count == 0 ? "disabled" : null)>Agregar producto</button>
+            </div>
+
+            @if (Model.Productos.Count == 0)
+            {
+                <div class="empty-state" role="status"><strong>El catálogo está vacío.</strong><p>Registra un producto antes de preparar una cotización.</p></div>
+                <div class="page-actions"><a class="btn btn-outline-secondary" asp-action="Index">Volver a cotizaciones</a></div>
+            }
+            else
+            {
+                <div asp-validation-for="Lineas" class="text-danger quote-lines-error"></div>
+                <div id="quote-lines" class="quote-lines">
+                    @for (var index = 0; index < Model.Lineas.Count; index++)
+                    {
+                        <div class="quote-line" data-quote-line>
+                            <div class="quote-line-heading"><strong data-line-label>Producto @(index + 1)</strong><button type="button" class="btn btn-sm btn-outline-danger quote-remove-line" data-remove-line aria-label="Quitar producto @(index + 1)">Quitar</button></div>
+                            <div class="form-group quote-product-field">
+                                <label asp-for="Lineas[index].ProductoId" class="control-label">Producto</label>
+                                <select asp-for="Lineas[index].ProductoId" class="form-select quote-product-select">
+                                    <option value="">Selecciona del catálogo</option>
+                                    @foreach (var producto in Model.Productos)
+                                    {
+                                        <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" selected="@(Model.Lineas[index].ProductoId == producto.IdProducto ? "selected" : null)">@producto.Nombre</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Lineas[index].ProductoId" class="text-danger"></span>
+                            </div>
+                            <div class="quote-line-fields">
+                                <div class="form-group">
+                                    <label asp-for="Lineas[index].Cantidad" class="control-label">Cantidad</label>
+                                    <input asp-for="Lineas[index].Cantidad" class="form-control quote-quantity" type="number" min="1" max="1000000" step="1" />
+                                    <span asp-validation-for="Lineas[index].Cantidad" class="text-danger"></span>
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Lineas[index].PrecioUnitario" class="control-label">Precio unitario</label>
+                                    <div class="input-with-prefix"><span>S/</span><input asp-for="Lineas[index].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" /></div>
+                                    <span asp-validation-for="Lineas[index].PrecioUnitario" class="text-danger"></span>
+                                </div>
+                                <div class="quote-line-amount"><span>Importe</span><output data-line-total>S/ 0,00</output></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <template id="quote-line-template">
+                    <div class="quote-line" data-quote-line>
+                        <div class="quote-line-heading"><strong data-line-label>Producto</strong><button type="button" class="btn btn-sm btn-outline-danger quote-remove-line" data-remove-line aria-label="Quitar producto">Quitar</button></div>
+                        <div class="form-group quote-product-field">
+                            <label class="control-label" for="Lineas___index___ProductoId">Producto</label>
+                            <select id="Lineas___index___ProductoId" name="Lineas[__index__].ProductoId" class="form-select quote-product-select" data-val="true" data-val-required="Selecciona un producto.">
+                                <option value="">Selecciona del catálogo</option>
+                                @foreach (var producto in Model.Productos)
+                                {
+                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")">@producto.Nombre</option>
+                                }
+                            </select>
+                            <span class="text-danger" data-valmsg-for="Lineas[__index__].ProductoId" data-valmsg-replace="true"></span>
+                        </div>
+                        <div class="quote-line-fields">
+                            <div class="form-group">
+                                <label class="control-label" for="Lineas___index___Cantidad">Cantidad</label>
+                                <input id="Lineas___index___Cantidad" name="Lineas[__index__].Cantidad" class="form-control quote-quantity" type="number" min="1" max="1000000" step="1" value="1" data-val="true" data-val-range="La cantidad debe estar entre 1 y 1 000 000." data-val-range-min="1" data-val-range-max="1000000" />
+                                <span class="text-danger" data-valmsg-for="Lineas[__index__].Cantidad" data-valmsg-replace="true"></span>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label" for="Lineas___index___PrecioUnitario">Precio unitario</label>
+                                <div class="input-with-prefix"><span>S/</span><input id="Lineas___index___PrecioUnitario" name="Lineas[__index__].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" value="0.00" data-val="true" data-val-range="Ingresa un precio válido." data-val-range-min="0" data-val-range-max="99999999.99" /></div>
+                                <span class="text-danger" data-valmsg-for="Lineas[__index__].PrecioUnitario" data-valmsg-replace="true"></span>
+                            </div>
+                            <div class="quote-line-amount"><span>Importe</span><output data-line-total>S/ 0,00</output></div>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="quote-totals" aria-live="polite" aria-atomic="true">
+                    <div><span>Subtotal</span><output data-subtotal>@Model.Totales.SubtotalMoneda</output></div>
+                    <div><span>IGV (18%)</span><output data-igv>@Model.Totales.IgvMoneda</output></div>
+                    <div class="quote-grand-total"><strong>Total</strong><output data-total>@Model.Totales.TotalMoneda</output></div>
+                </div>
+                <p class="quote-calculation-note">El importe mostrado es una estimación de la página; el servidor valida y calcula los valores al guardar.</p>
+
+                <div class="page-actions quote-form-actions">
+                    <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar cotización</button>
+                </div>
+            }
+        </section>
+    </div>
+</form>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/cotizacion-editor.js" asp-append-version="true"></script>
 }

@@ -1,59 +1,32 @@
-﻿@model ProyectoFinal.Models.Cotizacion
-
+@model ProyectoFinal.Models.Cotizacion
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
-    ViewData["Title"] = "Eliminar cotización";
+    ViewData["Title"] = $"Eliminar cotización #{Model.IdCotizacion}";
+    var culture = System.Globalization.CultureInfo.GetCultureInfo("es-PE");
 }
 
-<h1>Eliminar cotización</h1>
+<h1>Eliminar cotización #@Model.IdCotizacion</h1>
+<p class="intro">Esta acción elimina la cabecera y sus líneas. No se puede deshacer.</p>
+<div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
 
-<p class="intro">¿Seguro que deseas eliminar esta cotización? Esta acción no se puede deshacer.</p>
-<div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-<div>
-    <h4>Cotizacion</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FechaCreacion)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FechaCreacion)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FechaVencimiento)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FechaVencimiento)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DetalleCotizacion)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DetalleCotizacion)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Total)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Total)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IdClienteNavigation)
-        </dt>
-        <dd class = "col-sm-10">
-            @(Model.IdClienteNavigation?.Nombre ?? "Sin cliente")
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IdUsuarioNavigation)
-        </dt>
-        <dd class = "col-sm-10">
-            @(Model.IdUsuarioNavigation?.Email ?? "Sin usuario")
-        </dd>
+<section class="quote-card delete-summary">
+    <dl class="quote-audit quote-detail-audit">
+        <div><dt>Cliente</dt><dd>@(Model.IdClienteNavigation?.Nombre ?? "Sin cliente")</dd></div>
+        <div><dt>Fecha de emisión</dt><dd>@(Model.FechaCreacion?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
+        <div><dt>Líneas</dt><dd>@Model.DetalleCotizacions.Count</dd></div>
+        <div><dt>Total</dt><dd>@((Model.Total ?? 0).ToString("C2", culture))</dd></div>
     </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="IdCotizacion" />
-        <input type="submit" value="Eliminar cotización" class="btn btn-danger" /> |
-        <a asp-action="Index">Cancelar</a>
-    </form>
-</div>
+    @if (Model.Pedidos.Count > 0)
+    {
+        <p class="status-note status-error">Esta cotización está vinculada a un pedido y no se puede eliminar.</p>
+    }
+</section>
+
+<form asp-action="Delete" asp-route-id="@Model.IdCotizacion" method="post" class="page-actions">
+    <input type="hidden" name="id" value="@Model.IdCotizacion" />
+    @if (Model.Pedidos.Count == 0)
+    {
+        <button type="submit" class="btn btn-danger">Eliminar cotización</button>
+    }
+    <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver</a>
+</form>

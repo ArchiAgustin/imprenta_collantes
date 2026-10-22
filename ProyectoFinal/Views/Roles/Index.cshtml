@@ -1,0 +1,58 @@
+@model IEnumerable<ProyectoFinal.Models.RolAdminListViewModel>
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Roles";
+}
+
+<div class="page-heading-row">
+    <div>
+        <h1>Roles</h1>
+        <p class="intro">Los roles definen el acceso de cada cuenta. El rol Admin está protegido para mantener el acceso administrativo.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="Create">Crear rol</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state" role="status"><strong>No hay roles registrados.</strong><p>Crea un rol para organizar el acceso de las cuentas.</p></div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th scope="col">Rol</th><th scope="col">Usuarios</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var role in Model)
+                {
+                    <tr>
+                        <td><span class="role-badge">@role.Nombre</span></td>
+                        <td>@role.UsuariosAsignados</td>
+                        <td>@(role.EsProtegido ? "Rol base" : "Personalizado")</td>
+                        <td>
+                            @if (!role.EsProtegido)
+                            {
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@role.Id">Editar</a>
+                            }
+                            @if (role.PuedeEliminar)
+                            {
+                                <form asp-action="Delete" method="post" class="inline-action-form" onsubmit="return confirm('¿Eliminar este rol?');">
+                                    <input type="hidden" name="id" value="@role.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No disponible</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="page-actions">
+    <a class="btn btn-outline-secondary" asp-area="Identity" asp-page="/Usuario/Panel">Volver al panel</a>
+    <a class="btn btn-outline-primary" asp-controller="Admin" asp-action="Index">Ir a usuarios</a>
+</div>

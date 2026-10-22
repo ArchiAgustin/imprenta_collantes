@@ -1,0 +1,20 @@
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Crear rol";
+}
+
+<h1>Crear rol</h1>
+<p class="intro">El nombre debe ser único. El rol Admin está reservado por el sistema.</p>
+
+<form asp-action="Create" method="post" class="form-sheet">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <div class="form-group">
+        <label for="roleName" class="control-label">Nombre del rol</label>
+        <input id="roleName" name="roleName" class="form-control" maxlength="256" required autocomplete="off" />
+        <span class="field-validation-error">@Html.ValidationMessage("roleName")</span>
+    </div>
+    <div class="page-actions">
+        <button type="submit" class="btn btn-primary">Crear rol</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver a roles</a>
+    </div>
+</form>

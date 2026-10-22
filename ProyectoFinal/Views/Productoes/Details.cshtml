@@ -43,7 +43,7 @@
         </dd>
     </dl>
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.IdProducto">Editar</a> |
-    <a asp-action="Index">Volver a productos</a>
+<div class="page-actions">
+    <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model?.IdProducto">Editar producto</a>
+    <a class="btn btn-outline-secondary" asp-action="Index">Volver a productos</a>
 </div>

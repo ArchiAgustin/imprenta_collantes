@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ProyectoFinal.Data;
+using ProyectoFinal.Models;
 using Xunit;
 
 namespace ProyectoFinal.Tests;
@@ -40,6 +41,7 @@ public class NavigationTests
     [InlineData("/Productoes")]
     [InlineData("/Cotizacions")]
     [InlineData("/Admin")]
+    [InlineData("/Roles")]
     [InlineData("/Identity/Usuario/Panel")]
     public async Task AnonymousUserIsSentToLogin(string path)
     {
@@ -69,6 +71,10 @@ public class NavigationTests
         Assert.Contains("Clientes", await panel.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Clientes")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Admin")).StatusCode);
+        var users = await client.GetStringAsync("/Admin");
+        Assert.Contains("Roles asignados", users);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Roles")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync("/Identity/Account/Manage/IndexRole")).StatusCode);
         var account = await client.GetAsync("/Identity/Account/Manage");
         Assert.Equal(HttpStatusCode.OK, account.StatusCode);
         Assert.Contains("Configuración de la cuenta", await account.Content.ReadAsStringAsync());
@@ -107,6 +113,10 @@ public class NavigationTests
             Assert.True((await manager.CreateAsync(user, "TestPassword123!")).Succeeded);
             Assert.True((await manager.AddToRoleAsync(user, "Admin")).Succeeded);
             userId = user.Id;
+
+            var seedContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            seedContext.Producto.Add(new Producto { Nombre = "Impresión de prueba", Precio = 100m, Stock = 10 });
+            await seedContext.SaveChangesAsync();
         }
         await Login(client, "owner@example.test");
         var customerForm = await client.GetStringAsync("/Clientes/Create");
@@ -122,19 +132,133 @@ public class NavigationTests
         using var scopeForId = factory.Services.CreateScope();
         var context = scopeForId.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var customerId = context.Cliente.Single().IdCliente;
+        var productId = context.Producto.Single().IdProducto;
         var quoteForm = await client.GetStringAsync("/Cotizacions/Create");
         var quoteResponse = await client.PostAsync("/Cotizacions/Create", new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["IdCliente"] = customerId.ToString(),
+            ["ClienteId"] = customerId.ToString(),
+            ["Lineas[0].ProductoId"] = productId.ToString(),
+            ["Lineas[0].Cantidad"] = "2",
+            ["Lineas[0].PrecioUnitario"] = "100",
+            ["Descripcion"] = "Trabajo de prueba",
             ["IdUsuario"] = "forged-id",
             ["FechaCreacion"] = "2000-01-01",
-            ["Total"] = "42",
+            ["Total"] = "1",
             ["__RequestVerificationToken"] = Token(quoteForm)
         }));
         Assert.Equal(HttpStatusCode.Redirect, quoteResponse.StatusCode);
         var quote = context.Cotizacion.Single();
         Assert.Equal(userId, quote.IdUsuario);
         Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow), quote.FechaCreacion);
+        Assert.Equal(236m, quote.Total);
+        var quoteLine = context.DetalleCotizacion.Single();
+        Assert.Equal(productId, quoteLine.IdProducto);
+        Assert.Equal(2, quoteLine.Cantidad);
+        Assert.Equal(100m, quoteLine.PrecioUnitario);
+        var details = await client.GetAsync($"/Cotizacions/Details/{quote.IdCotizacion}");
+        Assert.Equal(HttpStatusCode.OK, details.StatusCode);
+        var detailsHtml = await details.Content.ReadAsStringAsync();
+        var savedProductName = await context.DetalleCotizacion
+            .AsNoTracking()
+            .Include(line => line.IdProductoNavigation)
+            .Select(line => line.IdProductoNavigation!.Nombre)
+            .SingleAsync();
+        Assert.Equal("Impresión de prueba", savedProductName);
+        Assert.Contains("Impresión de prueba", WebUtility.HtmlDecode(detailsHtml));
+        Assert.Contains("IGV (18%)", detailsHtml);
+
+        var editHtml = await client.GetStringAsync($"/Cotizacions/Edit/{quote.IdCotizacion}");
+        var editResponse = await client.PostAsync($"/Cotizacions/Edit/{quote.IdCotizacion}", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["IdCotizacion"] = quote.IdCotizacion.ToString(),
+            ["ClienteId"] = customerId.ToString(),
+            ["Lineas[0].ProductoId"] = productId.ToString(),
+            ["Lineas[0].Cantidad"] = "3",
+            ["Lineas[0].PrecioUnitario"] = "200",
+            ["Descripcion"] = "Edición de prueba",
+            ["__RequestVerificationToken"] = Token(editHtml)
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, editResponse.StatusCode);
+        var updatedQuote = await context.Cotizacion.AsNoTracking().SingleAsync(item => item.IdCotizacion == quote.IdCotizacion);
+        Assert.Equal(708m, updatedQuote.Total);
+        var updatedLine = await context.DetalleCotizacion.AsNoTracking().SingleAsync();
+        Assert.Equal(3, updatedLine.Cantidad);
+        Assert.Equal(200m, updatedLine.PrecioUnitario);
+    }
+
+    [Fact]
+    public async Task AdminCanAddAndRemoveIndividualRolesWithoutReplacingAllAssignments()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        string targetUserId;
+        string adminUserId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var manager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            var admin = new IdentityUser { UserName = "roles-admin@example.test", Email = "roles-admin@example.test" };
+            Assert.True((await manager.CreateAsync(admin, "TestPassword123!")).Succeeded);
+            Assert.True((await manager.AddToRoleAsync(admin, "Admin")).Succeeded);
+            adminUserId = admin.Id;
+
+            foreach (var role in new[] { "Designer", "Staff", "Auditor" })
+                Assert.True((await roleManager.CreateAsync(new IdentityRole(role))).Succeeded);
+
+            var target = new IdentityUser { UserName = "target@example.test", Email = "target@example.test" };
+            Assert.True((await manager.CreateAsync(target, "TestPassword123!")).Succeeded);
+            Assert.True((await manager.AddToRolesAsync(target, new[] { "Designer", "Staff" })).Succeeded);
+            targetUserId = target.Id;
+        }
+
+        await Login(client, "roles-admin@example.test");
+        var assignmentHtml = await client.GetStringAsync($"/Admin/AssignRole?userId={targetUserId}");
+        var response = await client.PostAsync("/Admin/AssignRole", new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("UserId", targetUserId),
+            new KeyValuePair<string, string>("SelectedRoles", "Designer"),
+            new KeyValuePair<string, string>("SelectedRoles", "Auditor"),
+            new KeyValuePair<string, string>("__RequestVerificationToken", Token(assignmentHtml))
+        }));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        using var verifyScope = factory.Services.CreateScope();
+        var userManager = verifyScope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        var updatedUser = await userManager.FindByIdAsync(targetUserId);
+        Assert.NotNull(updatedUser);
+        var roles = await userManager.GetRolesAsync(updatedUser!);
+        Assert.Equal(new[] { "Auditor", "Designer" }, roles.OrderBy(role => role).ToArray());
+
+        var verifyRoleManager = verifyScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var designerRole = await verifyRoleManager.FindByNameAsync("Designer");
+        Assert.NotNull(designerRole);
+        var editHtml = await client.GetStringAsync($"/Roles/Edit/{designerRole!.Id}");
+        var editResponse = await client.PostAsync($"/Roles/Edit/{designerRole.Id}", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = designerRole.Id,
+            ["Nombre"] = "Graphic Designer",
+            ["__RequestVerificationToken"] = Token(editHtml)
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, editResponse.StatusCode);
+        var renamedRoles = await userManager.GetRolesAsync(updatedUser!);
+        Assert.Contains("Graphic Designer", renamedRoles);
+        Assert.DoesNotContain("Designer", renamedRoles);
+
+        var selfAssignmentHtml = await client.GetStringAsync($"/Admin/AssignRole?userId={adminUserId}");
+        var rejectedDemotion = await client.PostAsync("/Admin/AssignRole", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["UserId"] = adminUserId,
+            ["__RequestVerificationToken"] = Token(selfAssignmentHtml)
+        }));
+        Assert.Equal(HttpStatusCode.OK, rejectedDemotion.StatusCode);
+        var rejectedDemotionResponseHtml = await rejectedDemotion.Content.ReadAsStringAsync();
+        var rejectedDemotionHtml = WebUtility.HtmlDecode(rejectedDemotionResponseHtml);
+        Assert.Contains("No puedes quitarte el rol Admin", rejectedDemotionHtml);
+        Assert.Contains("se mantuvo la asignación", rejectedDemotionHtml);
+        Assert.Contains("checked=\"checked\"", rejectedDemotionHtml);
+        var actingAdmin = await userManager.FindByIdAsync(adminUserId);
+        Assert.NotNull(actingAdmin);
+        Assert.Contains("Admin", await userManager.GetRolesAsync(actingAdmin!));
     }
 
     [Fact]
@@ -176,4 +300,5 @@ public class NavigationTests
         Assert.True(match.Success, "Form should contain an antiforgery token.");
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
+
 }

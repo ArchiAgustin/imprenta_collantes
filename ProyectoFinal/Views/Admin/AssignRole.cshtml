@@ -1,18 +1,38 @@
-﻿@model ProyectoFinal.Models.AssignRoleViewModel
+@model ProyectoFinal.Models.AssignRoleViewModel
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
-    ViewData["Title"] = "Asignar Rol";
+    ViewData["Title"] = "Roles del usuario";
 }
 
-<h2>Asignar rol a @Model.UserName</h2>
+<h1>Roles del usuario</h1>
+<p class="intro">@Model.UserName</p>
+<p>Marca todos los roles que correspondan. Al guardar, se conservarán los seleccionados y se quitarán los desmarcados.</p>
 
-<form asp-action="AssignRole" method="post">
+<form asp-action="AssignRole" method="post" class="role-assignment-form">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
     <input type="hidden" asp-for="UserId" />
-
-    <div class="form-group">
-        <label>Seleccionar Rol</label>
-        <select asp-for="SelectedRole" asp-items="@(new SelectList(Model.AvailableRoles))" class="form-control"></select>
+    @if (Model.AvailableRoles.Count == 0)
+    {
+        <div class="empty-state"><p>No hay roles disponibles para asignar.</p></div>
+    }
+    else
+    {
+        <fieldset class="role-checklist">
+            <legend>Selecciona los roles</legend>
+            @foreach (var role in Model.AvailableRoles)
+            {
+                var checkboxId = $"role-{role.Replace(' ', '-') }";
+                <label class="role-check" for="@checkboxId">
+                    <input id="@checkboxId" type="checkbox" name="SelectedRoles" value="@role"
+                           checked="@(Model.SelectedRoles.Contains(role, StringComparer.OrdinalIgnoreCase) ? "checked" : null)" />
+                    <span>@role</span>
+                </label>
+            }
+        </fieldset>
+    }
+    <span asp-validation-for="SelectedRoles" class="text-danger" role="alert"></span>
+    <div class="page-actions">
+        <button type="submit" class="btn btn-primary">Guardar roles</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver a usuarios</a>
     </div>
-
-    <button type="submit" class="btn btn-primary">Asignar</button>
 </form>

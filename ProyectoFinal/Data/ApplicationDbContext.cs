@@ -14,5 +14,6 @@ namespace ProyectoFinal.Data
         public DbSet<ProyectoFinal.Models.Proveedor> Proveedor { get; set; } = default!;
         public DbSet<ProyectoFinal.Models.Producto> Producto { get; set; } = default!;
         public DbSet<ProyectoFinal.Models.Cotizacion> Cotizacion { get; set; } = default!;
+        public DbSet<ProyectoFinal.Models.DetalleCotizacion> DetalleCotizacion { get; set; } = default!;
     }
 }

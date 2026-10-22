@@ -35,11 +35,22 @@
             <a class="panel-link @(controller == "Productoes" ? "is-current" : "")" asp-area="" asp-controller="Productoes" asp-action="Index" aria-current="@(controller == "Productoes" ? "page" : null)">Productos</a>
             <a class="panel-link @(controller == "Cotizacions" ? "is-current" : "")" asp-area="" asp-controller="Cotizacions" asp-action="Index" aria-current="@(controller == "Cotizacions" ? "page" : null)">Cotizaciones</a>
             <div class="nav-heading nav-heading-spaced">ADMINISTRACIÓN</div>
-            <a class="panel-link @(controller == "Admin" ? "is-current" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(controller == "Admin" ? "page" : null)">Usuarios y roles</a>
+            <a class="panel-link @(controller == "Admin" ? "is-current" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(controller == "Admin" ? "page" : null)">Usuarios</a>
+            <a class="panel-link @(controller == "Roles" ? "is-current" : "")" asp-area="" asp-controller="Roles" asp-action="Index" aria-current="@(controller == "Roles" ? "page" : null)">Roles</a>
             <div class="nav-footer">Un espacio para cada trabajo.</div>
         </nav>
         <main id="contenido" class="panel-main" role="main">
-            <div class="work-sheet">@RenderBody()</div>
+            <div class="work-sheet">
+                @if (TempData["Success"] is string successMessage)
+                {
+                    <div class="status-note status-success" role="status">@successMessage</div>
+                }
+                @if (TempData["Error"] is string errorMessage)
+                {
+                    <div class="status-note status-error" role="alert">@errorMessage</div>
+                }
+                @RenderBody()
+            </div>
         </main>
     </div>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
