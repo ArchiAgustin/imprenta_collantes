@@ -1,0 +1,9 @@
+.vs/
+**/bin/
+**/obj/
+*.csproj.user
+*.suo
+**/serviceDependencies.local.json*
+.impeccable/review/
+.impeccable/build/
+.impeccable/mocks/

@@ -1,0 +1,50 @@
+@{
+    Layout = null;
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var isPanel = ViewContext.RouteData.Values["page"]?.ToString() == "/Usuario/Panel";
+}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] · Imprenta Collantes</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="panel-body">
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <header class="site-header">
+        <div class="container-fluid header-inner">
+            <a class="brand" asp-area="Identity" asp-page="/Usuario/Panel" aria-label="Imprenta Collantes, panel">
+                <img src="~/img/marca-collantes.svg" alt="" width="42" height="42" />
+                <span><strong>Collantes</strong><small>GESTIÓN DE IMPRENTA</small></span>
+            </a>
+            <div class="header-actions">
+                <button class="btn nav-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#panelNav" aria-controls="panelNav" aria-expanded="false">Menú</button>
+                <nav aria-label="Cuenta" class="header-account"><partial name="_LoginPartial" /></nav>
+            </div>
+        </div>
+    </header>
+    <div class="panel-shell">
+        <nav id="panelNav" class="panel-nav collapse d-lg-block" aria-label="Módulos">
+            <div class="nav-heading">ÁREA DE TRABAJO</div>
+            <a class="panel-link @(isPanel ? "is-current" : "")" asp-area="Identity" asp-page="/Usuario/Panel" aria-current="@(isPanel ? "page" : null)">Inicio</a>
+            <a class="panel-link @(controller == "Clientes" ? "is-current" : "")" asp-area="" asp-controller="Clientes" asp-action="Index" aria-current="@(controller == "Clientes" ? "page" : null)">Clientes</a>
+            <a class="panel-link @(controller == "Proveedors" ? "is-current" : "")" asp-area="" asp-controller="Proveedors" asp-action="Index" aria-current="@(controller == "Proveedors" ? "page" : null)">Proveedores</a>
+            <a class="panel-link @(controller == "Productoes" ? "is-current" : "")" asp-area="" asp-controller="Productoes" asp-action="Index" aria-current="@(controller == "Productoes" ? "page" : null)">Productos</a>
+            <a class="panel-link @(controller == "Cotizacions" ? "is-current" : "")" asp-area="" asp-controller="Cotizacions" asp-action="Index" aria-current="@(controller == "Cotizacions" ? "page" : null)">Cotizaciones</a>
+            <div class="nav-heading nav-heading-spaced">ADMINISTRACIÓN</div>
+            <a class="panel-link @(controller == "Admin" ? "is-current" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(controller == "Admin" ? "page" : null)">Usuarios y roles</a>
+            <div class="nav-footer">Un espacio para cada trabajo.</div>
+        </nav>
+        <main id="contenido" class="panel-main" role="main">
+            <div class="work-sheet">@RenderBody()</div>
+        </main>
+    </div>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

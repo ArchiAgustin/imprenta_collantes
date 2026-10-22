@@ -1,0 +1,15 @@
+@page
+@model ProyectoFinal.Pages.PanelModel
+@{
+    Layout = "/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Panel";
+}
+<h1>Panel de trabajo</h1>
+<p class="intro">Cada módulo tiene su lugar. Selecciona el registro que necesitas consultar o actualizar.</p>
+<div class="module-list mt-4">
+    <a class="module-item" asp-area="" asp-controller="Clientes" asp-action="Index"><div><h2>Clientes</h2><p>Datos y contactos.</p></div><span class="module-cta">Ver clientes</span></a>
+    <a class="module-item" asp-area="" asp-controller="Proveedors" asp-action="Index"><div><h2>Proveedores</h2><p>Red de suministro.</p></div><span class="module-cta">Ver proveedores</span></a>
+    <a class="module-item" asp-area="" asp-controller="Productoes" asp-action="Index"><div><h2>Productos</h2><p>Catálogo y stock.</p></div><span class="module-cta">Ver productos</span></a>
+    <a class="module-item" asp-area="" asp-controller="Cotizacions" asp-action="Index"><div><h2>Cotizaciones</h2><p>Registros de cotización.</p></div><span class="module-cta">Ver cotizaciones</span></a>
+</div>
+<p class="mt-4">Para gestionar permisos, abre <a asp-area="" asp-controller="Admin" asp-action="Index">Usuarios y roles</a>.</p>

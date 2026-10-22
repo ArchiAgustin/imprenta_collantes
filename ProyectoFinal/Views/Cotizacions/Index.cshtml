@@ -1,0 +1,75 @@
+﻿@model IEnumerable<ProyectoFinal.Models.Cotizacion>
+
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Cotizaciones";
+}
+
+<h1>Cotizaciones</h1>
+
+<p>
+    <a class="btn btn-primary" asp-action="Create">Nueva cotización</a>
+</p>
+@if (!Model.Any())
+{
+    <div class="empty-state" role="status"><strong>Aún no hay cotizaciones registradas.</strong><p>Empieza creando el primer registro.</p></div>
+}
+else
+{
+<div class="table-responsive">
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.FechaCreacion)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.FechaVencimiento)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DetalleCotizacion)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Total)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IdClienteNavigation)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IdUsuarioNavigation)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.FechaCreacion)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.FechaVencimiento)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DetalleCotizacion)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Total)
+            </td>
+            <td>
+                @(item.IdClienteNavigation?.Nombre ?? "Sin cliente")
+            </td>
+            <td>
+                @(item.IdUsuarioNavigation?.Email ?? "Sin usuario")
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.IdCotizacion">Editar</a> |
+                <a asp-action="Details" asp-route-id="@item.IdCotizacion">Ver</a> |
+                <a asp-action="Delete" asp-route-id="@item.IdCotizacion">Eliminar</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
+</div>
+}

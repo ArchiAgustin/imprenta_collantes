@@ -1,0 +1,35 @@
+﻿@model ProyectoFinal.Models.Proveedor
+
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Eliminar proveedor";
+}
+
+<h1>Eliminar proveedor</h1>
+
+<p class="intro">¿Seguro que deseas eliminar este proveedor? Esta acción no se puede deshacer.</p>
+<div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+<div>
+    <h4>Proveedor</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Nombre)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Nombre)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Contacto)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Contacto)
+        </dd>
+    </dl>
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="IdProveedor" />
+        <input type="submit" value="Eliminar proveedor" class="btn btn-danger" /> |
+        <a asp-action="Index">Cancelar</a>
+    </form>
+</div>

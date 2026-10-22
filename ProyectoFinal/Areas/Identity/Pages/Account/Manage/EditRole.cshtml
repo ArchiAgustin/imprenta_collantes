@@ -1,0 +1,19 @@
+﻿@page "{id}"
+@model ProyectoFinal.Areas.Identity.Pages.Account.Manage.EditRoleModel
+@{
+    ViewData["Title"] = "Edit Role";
+}
+<h2>Edit Role</h2>
+
+<form method="post">
+    <!-- Campo oculto para que se envíe el ID del rol correctamente -->
+    <input type="hidden" asp-for="Role.Id" />
+
+    <div class="form-group">
+        <label asp-for="Role.Name"></label>
+        <input asp-for="Role.Name" class="form-control" />
+        <span asp-validation-for="Role.Name" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+</form>

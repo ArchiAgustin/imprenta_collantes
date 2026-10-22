@@ -1,0 +1,29 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Ingresar";
+}
+<div class="auth-sheet">
+    <h1>Bienvenido de nuevo.</h1>
+    <p class="intro">Ingresa con tu cuenta para continuar con la gestión de Imprenta Collantes.</p>
+    <form id="account" method="post" asp-route-returnUrl="@Model.ReturnUrl">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+        <div class="form-floating mb-3">
+            <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="correo@ejemplo.com" />
+            <label asp-for="Input.Email">Correo electrónico</label>
+            <span asp-validation-for="Input.Email" class="text-danger"></span>
+        </div>
+        <div class="form-floating mb-3">
+            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Contraseña" />
+            <label asp-for="Input.Password">Contraseña</label>
+            <span asp-validation-for="Input.Password" class="text-danger"></span>
+        </div>
+        <label class="mb-4 d-flex align-items-center gap-2" asp-for="Input.RememberMe">
+            <input class="form-check-input mt-0" asp-for="Input.RememberMe" /> Recordarme
+        </label>
+        <button id="login-submit" type="submit" class="btn btn-primary w-100">Ingresar</button>
+    </form>
+    <p class="mt-4 mb-0">¿No tienes cuenta? <a asp-page="./Register">Crear cuenta</a>.</p>
+    <p class="auth-footnote">La recuperación por correo aún no está habilitada. Si necesitas acceso, consulta con el administrador.</p>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

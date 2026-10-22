@@ -1,0 +1,18 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@if (SignInManager.IsSignedIn(User))
+{
+    @if (User.IsInRole("Admin"))
+    {
+        <a class="account-link" asp-area="Identity" asp-page="/Usuario/Panel">Panel</a>
+    }
+    <a class="account-link account-name" asp-area="Identity" asp-page="/Account/Manage/Index" title="Mi cuenta">Mi cuenta</a>
+    <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
+        <button class="account-link account-logout" type="submit">Salir</button>
+    </form>
+}
+else
+{
+    <a class="account-link" asp-area="Identity" asp-page="/Account/Register">Crear cuenta</a>
+    <a class="btn btn-primary btn-sm" asp-area="Identity" asp-page="/Account/Login">Ingresar</a>
+}

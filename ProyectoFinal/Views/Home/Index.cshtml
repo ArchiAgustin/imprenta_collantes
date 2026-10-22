@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Inicio";
+    var isAdmin = User.IsInRole("Admin");
+}
+<div class="home-lead">
+    <h1>El trabajo, en orden.</h1>
+    <p class="intro">Clientes, proveedores, productos y cotizaciones en un solo espacio de gestión para Imprenta Collantes.</p>
+    @if (!User.Identity?.IsAuthenticated ?? true)
+    {
+        <a class="btn btn-primary mt-2" asp-area="Identity" asp-page="/Account/Login">Ingresar al sistema</a>
+    }
+    else if (!isAdmin)
+    {
+        <div class="status-note" role="status"><strong>Tu cuenta está activa, pero aún no tiene acceso al panel.</strong> Solicita a un administrador que te asigne permisos. Puedes gestionar tus datos desde «Mi cuenta».</div>
+    }
+</div>
+@if (isAdmin)
+{
+    <h2>Áreas de trabajo</h2>
+    <p>Elige el módulo en el que deseas continuar.</p>
+    <div class="module-list">
+        <a class="module-item" asp-area="" asp-controller="Clientes" asp-action="Index"><div><h2>Clientes</h2><p>Consulta y actualiza sus datos.</p></div><span class="module-cta">Abrir módulo</span></a>
+        <a class="module-item" asp-area="" asp-controller="Proveedors" asp-action="Index"><div><h2>Proveedores</h2><p>Gestiona los contactos de suministro.</p></div><span class="module-cta">Abrir módulo</span></a>
+        <a class="module-item" asp-area="" asp-controller="Productoes" asp-action="Index"><div><h2>Productos</h2><p>Revisa precios y existencias.</p></div><span class="module-cta">Abrir módulo</span></a>
+        <a class="module-item" asp-area="" asp-controller="Cotizacions" asp-action="Index"><div><h2>Cotizaciones</h2><p>Consulta los registros comerciales.</p></div><span class="module-cta">Abrir módulo</span></a>
+    </div>
+}

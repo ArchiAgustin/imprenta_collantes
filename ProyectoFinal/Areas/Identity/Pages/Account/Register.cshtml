@@ -1,0 +1,30 @@
+@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "Crear cuenta";
+}
+<div class="auth-sheet">
+    <h1>Crear cuenta.</h1>
+    <p class="intro">Tu cuenta se creará sin acceso al panel. Un administrador podrá asignarte permisos después.</p>
+    <form id="registerForm" method="post" asp-route-returnUrl="@Model.ReturnUrl">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+        <div class="form-floating mb-3">
+            <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="correo@ejemplo.com" />
+            <label asp-for="Input.Email">Correo electrónico</label>
+            <span asp-validation-for="Input.Email" class="text-danger"></span>
+        </div>
+        <div class="form-floating mb-3">
+            <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Contraseña" />
+            <label asp-for="Input.Password">Contraseña</label>
+            <span asp-validation-for="Input.Password" class="text-danger"></span>
+        </div>
+        <div class="form-floating mb-4">
+            <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Repite tu contraseña" />
+            <label asp-for="Input.ConfirmPassword">Confirmar contraseña</label>
+            <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+        </div>
+        <button id="registerSubmit" type="submit" class="btn btn-primary w-100">Crear cuenta</button>
+    </form>
+    <p class="mt-4 mb-0">¿Ya tienes cuenta? <a asp-page="./Login">Ingresar</a>.</p>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

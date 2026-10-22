@@ -1,0 +1,50 @@
+﻿@model ProyectoFinal.Models.Cotizacion
+
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Editar cotización";
+}
+
+<h1>Editar cotización</h1>
+
+<p class="intro">Actualiza los datos del registro sin alterar quién lo creó.</p>
+<div class="row">
+    <div class="col-md-7">
+        <form asp-action="Edit" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="IdCotizacion" />
+            <div class="form-group">
+                <label asp-for="IdCliente" class="control-label">Cliente</label>
+                <select asp-for="IdCliente" class="form-control" asp-items="ViewBag.IdCliente"></select>
+                <span asp-validation-for="IdCliente" class="text-danger"></span>
+            </div>
+            <p class="auth-footnote">La fecha de creación y el usuario original no se pueden modificar.</p>
+            <div class="form-group">
+                <label asp-for="FechaVencimiento" class="control-label">Fecha de vencimiento</label>
+                <input asp-for="FechaVencimiento" class="form-control" />
+                <span asp-validation-for="FechaVencimiento" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DetalleCotizacion" class="control-label">Descripción del trabajo</label>
+                <input asp-for="DetalleCotizacion" class="form-control" />
+                <span asp-validation-for="DetalleCotizacion" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Total" class="control-label">Importe referencial</label>
+                <input asp-for="Total" class="form-control" />
+                <span asp-validation-for="Total" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Guardar cambios" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Volver a cotizaciones</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

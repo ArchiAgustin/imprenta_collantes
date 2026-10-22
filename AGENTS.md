@@ -1,0 +1,9 @@
+# Repository notes
+
+- `ProyectoFinal.sln` contains the .NET 8 app (`ProyectoFinal/`, MVC + Identity Razor Pages) and `ProyectoFinal.Tests/`. `Program.cs` is the entrypoint; CRUD lives in `Controllers/` + `Views/`, login/roles in `Areas/Identity/Pages/`.
+- From the root: `dotnet build ProyectoFinal.sln`, `dotnet test ProyectoFinal.sln` (EF InMemory; no SQL Server needed), `dotnet run --project ProyectoFinal/ProyectoFinal.csproj --launch-profile http` (`http://localhost:5092`). Tests can be focused with `dotnet test ProyectoFinal.Tests/ProyectoFinal.Tests.csproj --filter FullyQualifiedName~NavigationTests`.
+- Runtime and `dotnet ef database update` require `ConnectionStrings:DefaultConnection` via user-secrets or environment, not appsettings. Set optional `BootstrapAdmin:Email` + `BootstrapAdmin:Password` together to provision an Admin at startup. See `README.md` for setup; public registrations have **no CRUD access** until given Admin. Do not commit bootstrap credentials.
+- The only registered EF context is `Data/ApplicationDbContext.cs`; `Models/DbContextNombre.cs` and `Areas/Identity/Data/ProyectoFinalContext.cs` are legacy/unregistered. CRUD uses `IdentityUser`, not scaffolded `Models/AspNetUser`.
+- `Data/Migrations/*AddBusinessTables*` creates commercial tables in a **new** database; existing databases may already contain them and need manual schema/history reconciliation before applying migrations. Never auto-apply on startup. `Services/FakeEmailSender.cs` logs to console, not real email.
+- Admin pages use `Areas/Identity/Pages/Shared/_PanelLayout.cshtml`; the public/auth shell uses `Views/Shared/_Layout.cshtml`. Design tokens are in `wwwroot/css/site.css` and `DESIGN.md`.
+- `Documentacion/REQUERIMIENTOS_SISTEMA.md` describes **target** capabilities (orders, BI, AI, service layers), not the current implementation; verify behavior in `Program.cs` and code before treating it as existing architecture.

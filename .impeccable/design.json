@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T04:30:00Z",
+  "title": "Design System: Imprenta Collantes",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "Tinta profunda" },
+      "paper": { "role": "neutral", "displayName": "Papel cálido" },
+      "action": { "role": "primary", "displayName": "Verde mineral" },
+      "marker": { "role": "accent", "displayName": "Marca de registro" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Barlow Condensed", "purpose": "Brand and headings" },
+      "body": { "displayName": "System UI", "purpose": "Records, forms and instructions" }
+    },
+    "shadows": [{ "name": "sheet", "value": "0 14px 38px -28px #29484465", "purpose": "Lift a working sheet from the workspace" }],
+    "motion": [{ "name": "hover", "value": "background .18s ease", "purpose": "Quiet feedback on indexed links" }],
+    "breakpoints": [{ "name": "rail-collapse", "value": "992px" }, { "name": "mobile", "value": "576px" }]
+  },
+  "components": [
+    {
+      "name": "Primary Button", "kind": "button", "refersTo": "button-primary",
+      "description": "One primary action per form or record list.",
+      "html": "<button class=\"ds-btn-primary\">Guardar cambios</button>",
+      "css": ".ds-btn-primary { background:#196369; color:#fffef9; border:1px solid #196369; border-radius:.25rem; padding:.57rem 1rem; font-weight:650; cursor:pointer } .ds-btn-primary:hover { background:#104b50 } .ds-btn-primary:focus-visible { outline:3px solid #a74a28; outline-offset:3px }"
+    },
+    {
+      "name": "Module Index Link", "kind": "nav", "refersTo": "module-item",
+      "description": "A clear route into one existing working module.",
+      "html": "<a href=\"#\" class=\"ds-module-link\">Clientes</a>",
+      "css": ".ds-module-link { display:block; padding:1.25rem 1.4rem; background:#fffef9; color:#18383b; border:1px solid #cdd3c9; font:700 2rem 'Barlow Condensed', sans-serif; text-decoration:none } .ds-module-link:hover { background:#eaf1e9 } .ds-module-link:focus-visible { outline:3px solid #a74a28; outline-offset:3px }"
+    },
+    {
+      "name": "Text Field", "kind": "input",
+      "description": "A field on a working sheet.",
+      "html": "<label class=\"ds-label\">Nombre <input class=\"ds-input\" placeholder=\"Nombre\"></label>",
+      "css": ".ds-label { display:grid; gap:.35rem; color:#18383b; font:700 .87rem system-ui,sans-serif } .ds-input { padding:.64rem .8rem; border:1px solid #97aaa7; border-radius:.2rem; color:#18383b; background:#fffef9; font:400 1rem system-ui,sans-serif } .ds-input:focus-visible { outline:3px solid #a74a28; outline-offset:3px }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Fichas de taller",
+    "overview": "An indexed working archive, not a marketing dashboard. Navigation identifies the current module; sheets give forms and records a quiet, repeatable work surface.",
+    "keyCharacteristics": ["Visible module index", "Legible data", "One primary action per task"],
+    "rules": [],
+    "dos": ["Do describe only implemented modules and indicate accounts awaiting permissions.", "Do use meaningful customer/provider names instead of IDs in UI choices."],
+    "donts": ["Don't present manual quotation totals as calculated tax-inclusive amounts.", "Don't fabricate sales figures, inventory alerts or order states."]
+  }
+}

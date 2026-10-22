@@ -1,0 +1,51 @@
+﻿@model IEnumerable<ProyectoFinal.Models.Proveedor>
+
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Proveedores";
+}
+
+<h1>Proveedores</h1>
+
+<p>
+    <a class="btn btn-primary" asp-action="Create">Nuevo proveedor</a>
+</p>
+@if (!Model.Any())
+{
+    <div class="empty-state" role="status"><strong>Aún no hay proveedores registrados.</strong><p>Empieza creando el primer registro.</p></div>
+}
+else
+{
+<div class="table-responsive">
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Nombre)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Contacto)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Nombre)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Contacto)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.IdProveedor">Editar</a> |
+                <a asp-action="Details" asp-route-id="@item.IdProveedor">Ver</a> |
+                <a asp-action="Delete" asp-route-id="@item.IdProveedor">Eliminar</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
+</div>
+}
