@@ -1,6 +1,7 @@
 @{
     ViewData["Title"] = "Inicio";
     var isAdmin = User.IsInRole("Admin");
+    var hasRole = User.Claims.Any(claim => claim.Type == System.Security.Claims.ClaimTypes.Role);
 }
 <div class="home-lead">
     <h1>El trabajo, en orden.</h1>
@@ -9,9 +10,13 @@
     {
         <a class="btn btn-primary mt-2" asp-area="Identity" asp-page="/Account/Login">Ingresar al sistema</a>
     }
-    else if (!isAdmin)
+    else if (!hasRole)
     {
         <div class="status-note" role="status"><strong>Tu cuenta está activa, pero aún no tiene acceso al panel.</strong> Solicita a un administrador que te asigne permisos. Puedes gestionar tus datos desde «Mi cuenta».</div>
+    }
+    else
+    {
+        <a class="btn btn-primary mt-2" asp-area="Identity" asp-page="/Usuario/Panel">Ir a mi panel de trabajo</a>
     }
 </div>
 @if (isAdmin)

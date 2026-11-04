@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using ProyectoFinal.Data;
 using ProyectoFinal.Services;
 
@@ -23,9 +25,37 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
     .AddDefaultTokenProviders()
     .AddDefaultUI();
 
-builder.Services.AddControllersWithViews(options => options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()));
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
+    options.Filters.AddService<MenuAuthorizationFilter>();
+});
 builder.Services.AddRazorPages();
 builder.Services.AddTransient<IEmailSender, FakeEmailSender>();
+builder.Services.AddScoped<IMenuAccessService, MenuAccessService>();
+builder.Services.AddScoped<MenuAuthorizationFilter>();
+builder.Services.AddScoped<VentaService>();
+builder.Services.AddScoped<SerieDocumentoInternoService>();
+builder.Services.AddScoped<InventarioService>();
+builder.Services.AddScoped<AnalyticsService>();
+builder.Services.AddScoped<SugerenciaPrecioService>();
+builder.Services.AddScoped<IdentificacionService>();
+builder.Services.AddHttpClient<ISolicitudExtractor, GroqSolicitudExtractor>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("groq", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "sin-usuario",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
+builder.Services.AddScoped<CotizacionExpirationService>();
+builder.Services.AddHostedService<CotizacionExpirationWorker>();
 
 
 var app = builder.Build();
@@ -82,6 +112,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllerRoute(

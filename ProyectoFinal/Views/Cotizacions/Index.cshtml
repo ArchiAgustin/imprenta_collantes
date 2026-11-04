@@ -1,7 +1,11 @@
 @model IEnumerable<ProyectoFinal.Models.Cotizacion>
+@inject ProyectoFinal.Services.IMenuAccessService MenuAccess
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Cotizaciones";
+    var canCreate = await MenuAccess.HasPermissionAsync(User, "cotizaciones", ProyectoFinal.Services.MenuPermissionKind.Create);
+    var canEdit = await MenuAccess.HasPermissionAsync(User, "cotizaciones", ProyectoFinal.Services.MenuPermissionKind.Edit);
+    var canDelete = await MenuAccess.HasPermissionAsync(User, "cotizaciones", ProyectoFinal.Services.MenuPermissionKind.Delete);
 }
 
 <div class="page-heading-row">
@@ -9,7 +13,7 @@
         <h1>Cotizaciones</h1>
         <p class="intro">Prepara propuestas con detalle de productos e importes calculados.</p>
     </div>
-    <a class="btn btn-primary" asp-action="Create">Nueva cotización</a>
+    @if (canCreate) { <a class="btn btn-primary" asp-action="Create">Nueva cotización</a> }
 </div>
 
 @if (!Model.Any())
@@ -26,6 +30,7 @@ else
                     <th scope="col">Cliente</th>
                     <th scope="col">Emisión</th>
                     <th scope="col">Vigencia</th>
+                    <th scope="col">Estado</th>
                     <th scope="col">Detalle</th>
                     <th scope="col">Líneas</th>
                     <th scope="col">Total</th>
@@ -36,18 +41,19 @@ else
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td class="folio">#@item.IdCotizacion</td>
+                        <td class="folio">@item.NumeroInterno</td>
                         <td>@(item.IdClienteNavigation?.Nombre ?? "Sin cliente")</td>
                         <td>@(item.FechaCreacion?.ToString("dd/MM/yyyy") ?? "—")</td>
                         <td>@(item.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td>@item.Estado</td>
                         <td class="quote-list-description">@(string.IsNullOrWhiteSpace(item.DetalleCotizacion) ? "—" : item.DetalleCotizacion)</td>
                         <td>@item.DetalleCotizacions.Count</td>
                         <td class="quote-list-total">@((item.Total ?? 0).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("es-PE")))</td>
                         <td>
                             <div class="table-actions">
                                 <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.IdCotizacion">Ver</a>
-                                <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.IdCotizacion">Editar</a>
-                                <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.IdCotizacion">Eliminar</a>
+                                @if (canEdit && item.Estado == "Emitida") { <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.IdCotizacion">Editar</a> }
+                                @if (canDelete && item.Estado == "Emitida") { <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.IdCotizacion">Eliminar</a> }
                             </div>
                         </td>
                     </tr>

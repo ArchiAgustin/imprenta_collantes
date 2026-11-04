@@ -1,0 +1,38 @@
+@model ProyectoFinal.Models.Pedido
+@inject ProyectoFinal.Services.IMenuAccessService MenuAccess
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = $"Trabajo #{Model.IdPedido}";
+    var canProcess = await MenuAccess.HasPermissionAsync(User, "taller", ProyectoFinal.Services.MenuPermissionKind.Process);
+    var states = ProyectoFinal.Models.EstadoPedido.FlujoProduccion.ToArray();
+    var currentIndex = Array.IndexOf(states, Model.EstadoPedido ?? string.Empty);
+    var nextState = currentIndex >= 0 && currentIndex < states.Length - 1 ? states[currentIndex + 1] : null;
+}
+
+<div class="page-heading-row"><div><h1>Trabajo #@Model.IdPedido</h1><p class="intro">Seguimiento de producción asociado a una venta.</p></div><span class="badge text-bg-secondary">@Model.EstadoPedido</span></div>
+<dl class="row">
+    <dt class="col-sm-3">Venta asociada</dt><dd class="col-sm-9">@(Model.IdVenta is null ? "Trabajo legado" : $"Venta #{Model.IdVenta}")</dd>
+    <dt class="col-sm-3">Cliente</dt><dd class="col-sm-9">@(Model.IdVentaNavigation?.Cliente?.Nombre ?? Model.IdClienteNavigation?.Nombre ?? "Cliente no disponible")</dd>
+    <dt class="col-sm-3">Fecha de ingreso</dt><dd class="col-sm-9">@(Model.FechaPedido?.ToString("dd/MM/yyyy") ?? "—")</dd>
+</dl>
+
+<h2>Detalle del trabajo</h2>
+<div class="table-responsive"><table class="table"><thead><tr><th>Artículo / servicio</th><th>Tipo</th><th>Cantidad</th></tr></thead><tbody>
+    @foreach (var line in Model.DetallePedidos)
+    {
+        <tr><td>@(line.ProductoNombre ?? line.IdProductoNavigation?.Nombre ?? "Producto")</td><td>@(line.EsServicio ? "Servicio" : "Artículo")</td><td>@line.Cantidad</td></tr>
+    }
+</tbody></table></div>
+
+<div class="page-actions">
+    @if (canProcess && nextState is not null)
+    {
+        <form asp-action="ActualizarEstado" method="post">
+            <input type="hidden" name="id" value="@Model.IdPedido" />
+            <input type="hidden" name="estado" value="@nextState" />
+            <button class="btn btn-primary" type="submit">Avanzar a «@nextState»</button>
+        </form>
+    }
+    @if (Model.IdVenta is not null) { <a class="btn btn-outline-secondary" asp-controller="Ventas" asp-action="Details" asp-route-id="@Model.IdVenta">Ver venta</a> }
+    <a class="btn btn-outline-secondary" asp-action="Index">Volver a cola</a>
+</div>

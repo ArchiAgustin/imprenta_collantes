@@ -1,8 +1,9 @@
 ﻿@model ProyectoFinal.Models.Producto
-
+@inject ProyectoFinal.Services.IMenuAccessService MenuAccess
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Detalle de producto";
+    var canEdit = await MenuAccess.HasPermissionAsync(User, "productos", ProyectoFinal.Services.MenuPermissionKind.Edit);
 }
 
 <h1>Detalle de producto</h1>
@@ -29,11 +30,22 @@
         <dd class = "col-sm-10">
             @Html.DisplayFor(model => model.Precio)
         </dd>
+        @if (User.IsInRole("Admin"))
+        {
+            <dt class="col-sm-2">Costo unitario sin IGV</dt>
+            <dd class="col-sm-10">@(Model.CostoUnitarioSinIgv is { } costo ? costo.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("es-PE")) : "Sin registrar")</dd>
+        }
+        <dt class = "col-sm-2">
+            Tipo
+        </dt>
+        <dd class = "col-sm-10">
+            @(Model.EsServicio ? "Servicio" : "Artículo")
+        </dd>
         <dt class = "col-sm-2">
             @Html.DisplayNameFor(model => model.Stock)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Stock)
+            @ViewData["StockActual"]
         </dd>
         <dt class = "col-sm-2">
             @Html.DisplayNameFor(model => model.IdProveedorNavigation)
@@ -44,6 +56,6 @@
     </dl>
 </div>
 <div class="page-actions">
-    <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model?.IdProducto">Editar producto</a>
+    @if (canEdit) { <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model?.IdProducto">Editar producto</a> }
     <a class="btn btn-outline-secondary" asp-action="Index">Volver a productos</a>
 </div>

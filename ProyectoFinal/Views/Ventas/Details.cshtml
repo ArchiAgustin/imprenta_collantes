@@ -1,0 +1,51 @@
+@model ProyectoFinal.Models.Venta
+@inject ProyectoFinal.Services.IMenuAccessService MenuAccess
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = $"Venta {Model.NumeroInterno}";
+    var culture = System.Globalization.CultureInfo.GetCultureInfo("es-PE");
+    var canProcess = await MenuAccess.HasPermissionAsync(User, "ventas", ProyectoFinal.Services.MenuPermissionKind.Process);
+}
+
+<div class="page-heading-row"><div><h1>Venta @Model.NumeroInterno</h1><p class="intro">Comprobante interno · no válido como comprobante de pago tributario.</p></div><span class="badge text-bg-secondary">@Model.Estado</span></div>
+<dl class="row">
+    <dt class="col-sm-3">Cliente</dt><dd class="col-sm-9">@(Model.Cliente?.Nombre ?? "Cliente no disponible")</dd>
+    <dt class="col-sm-3">Cotización origen</dt><dd class="col-sm-9"><a asp-controller="Cotizacions" asp-action="Details" asp-route-id="@Model.IdCotizacion">#@Model.IdCotizacion</a></dd>
+    <dt class="col-sm-3">Fecha (Perú)</dt><dd class="col-sm-9">@ProyectoFinal.Services.FechaComercial.EnPeru(Model.FechaVentaUtc).ToString("dd/MM/yyyy HH:mm")</dd>
+    <dt class="col-sm-3">Total</dt><dd class="col-sm-9">@Model.Total.ToString("C2", culture)</dd>
+    <dt class="col-sm-3">Trabajo asociado</dt><dd class="col-sm-9">@(Model.Pedido is null ? "No creado" : $"#{Model.Pedido.IdPedido} · {Model.Pedido.EstadoPedido}")</dd>
+</dl>
+
+<h2>Detalle vendido</h2>
+<div class="table-responsive"><table class="table">
+    <thead><tr><th>Producto / servicio</th><th>Tipo</th><th>Cantidad</th><th>Precio unitario</th><th>Importe sin IGV</th>@if (User.IsInRole("Admin")) { <th>Costo unitario sin IGV</th> }</tr></thead>
+    <tbody>
+    @foreach (var line in Model.Detalles)
+    {
+        <tr><td>@line.ProductoNombre</td><td>@(line.EsServicio ? "Servicio" : "Artículo")</td><td>@line.Cantidad</td><td>@line.PrecioUnitario.ToString("C2", culture)</td><td>@((line.Cantidad * line.PrecioUnitario).ToString("C2", culture))</td>@if (User.IsInRole("Admin")) { <td>@(line.CostoUnitarioSinIgv is { } costo ? costo.ToString("C2", culture) : "Sin registrar")</td> }</tr>
+    }
+    </tbody>
+</table></div>
+@if (User.IsInRole("Admin") && Model.Estado == ProyectoFinal.Models.EstadoVenta.Confirmada)
+{
+    var incomplete = Model.Detalles.Any(line => line.CostoUnitarioSinIgv is null);
+    var neto = Model.Detalles.Sum(line => line.Cantidad * line.PrecioUnitario);
+    var costo = Model.Detalles.Sum(line => line.Cantidad * (line.CostoUnitarioSinIgv ?? 0));
+    <p class="auth-footnote">@(
+        incomplete
+            ? "Utilidad no calculable para esta venta: faltan costos unitarios en una o más líneas. El costo histórico no se modifica al editar el catálogo."
+            : $"Utilidad estimada sin IGV: {(neto - costo).ToString("C2", culture)} (venta neta − costo registrado).")</p>
+}
+
+<div class="page-actions">
+    <a class="btn btn-outline-primary" asp-action="Imprimir" asp-route-id="@Model.IdVenta" target="_blank" rel="noopener">Imprimir comprobante interno</a>
+    @if (canProcess && Model.Estado == ProyectoFinal.Models.EstadoVenta.Confirmada && Model.Pedido?.EstadoPedido == ProyectoFinal.Models.EstadoPedido.EnCola)
+    {
+        <form asp-action="Cancelar" method="post" onsubmit="return confirm('¿Cancelar la venta y restituir el stock?');">
+            <input type="hidden" name="id" value="@Model.IdVenta" />
+            <button class="btn btn-outline-danger" type="submit">Cancelar venta y devolver stock</button>
+        </form>
+    }
+    <a class="btn btn-outline-secondary" asp-action="Index">Volver a ventas</a>
+    @if (Model.Pedido is not null) { <a class="btn btn-primary" asp-controller="Taller" asp-action="Details" asp-route-id="@Model.Pedido.IdPedido">Abrir trabajo</a> }
+</div>

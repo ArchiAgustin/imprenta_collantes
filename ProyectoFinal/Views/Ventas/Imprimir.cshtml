@@ -1,0 +1,17 @@
+@using System.Globalization
+@model ProyectoFinal.Models.Venta
+@{
+    Layout = "~/Views/Shared/_PrintLayout.cshtml";
+    ViewData["Title"] = $"Comprobante interno {Model.NumeroInterno}";
+    var peru = CultureInfo.GetCultureInfo("es-PE");
+}
+<header class="print-header"><div><img src="~/img/marca-collantes.svg" width="52" height="52" alt="" /><strong>IMPRENTA COLLANTES</strong><small>Registro comercial interno</small></div><div class="print-number"><span>VENTA INTERNA</span><strong>@Model.NumeroInterno</strong></div></header>
+<p class="print-legal">COMPROBANTE INTERNO DE VENTA · NO VÁLIDO COMO COMPROBANTE DE PAGO TRIBUTARIO · NO EMITIDO A SUNAT</p>
+<div class="print-status"><span>Estado: @Model.Estado</span>@if (Model.Estado == ProyectoFinal.Models.EstadoVenta.Cancelada) { <strong>VENTA CANCELADA</strong> }</div>
+<dl class="print-facts"><div><dt>Cliente al confirmar</dt><dd>@(Model.ClienteNombreEmision ?? "No registrado en venta histórica")</dd></div><div><dt>Documento</dt><dd>@(Model.ClienteDocumentoEmision ?? "No registrado")</dd></div><div><dt>Dirección</dt><dd>@(Model.ClienteDireccionEmision ?? "No registrada")</dd></div><div><dt>Fecha y hora (Perú)</dt><dd>@ProyectoFinal.Services.FechaComercial.EnPeru(Model.FechaVentaUtc).ToString("dd/MM/yyyy HH:mm")</dd></div><div><dt>Cotización origen</dt><dd>#@Model.IdCotizacion</dd></div></dl>
+<table class="print-lines"><thead><tr><th scope="col">Artículo / servicio</th><th scope="col" class="numeric">Cant.</th><th scope="col" class="numeric">P. unit. sin IGV</th><th scope="col" class="numeric">Importe</th></tr></thead><tbody>
+@foreach (var item in Model.Detalles.OrderBy(item => item.IdDetalleVenta))
+{ <tr><th scope="row">@item.ProductoNombre</th><td class="numeric">@item.Cantidad</td><td class="numeric">@item.PrecioUnitario.ToString("C2", peru)</td><td class="numeric">@((item.Cantidad * item.PrecioUnitario).ToString("C2", peru))</td></tr> }
+</tbody></table>
+<dl class="print-totals"><div><dt>Subtotal sin IGV</dt><dd>@(Model.SubtotalSinIgvEmision?.ToString("C2", peru) ?? "No registrado (venta histórica)")</dd></div><div><dt>IGV al confirmar</dt><dd>@(Model.IgvEmision?.ToString("C2", peru) ?? "No registrado (venta histórica)")</dd></div><div class="print-total"><dt>Total registrado</dt><dd>@Model.Total.ToString("C2", peru)</dd></div></dl>
+<footer class="print-foot">Documento para control interno. No reemplaza boleta ni factura electrónica.</footer>

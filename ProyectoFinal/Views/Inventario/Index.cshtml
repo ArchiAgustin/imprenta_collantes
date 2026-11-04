@@ -1,0 +1,71 @@
+@using System.Globalization
+@model ProyectoFinal.Models.InventarioDashboardViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Inventario";
+    var peru = CultureInfo.GetCultureInfo("es-PE");
+}
+<div class="page-heading-row">
+    <div><h1>Inventario</h1><p class="intro">Almacén principal · existencias en unidad base y movimientos trazables.</p></div>
+</div>
+
+@if (Model.CorteAbierto is { } abierto)
+{
+    <section class="inventory-stage" aria-labelledby="inventory-count-title">
+        <h2 id="inventory-count-title">Conteo físico en curso</h2>
+        <p>Ventas, cancelaciones y entradas están pausadas. Registra las cantidades disponibles para vender; no incluyas artículos ya comprometidos para trabajos anteriores.</p>
+        <a class="btn btn-primary" asp-action="Conteo" asp-route-id="@abierto.IdCorteInventario">Continuar conteo #@abierto.IdCorteInventario</a>
+    </section>
+}
+else if (!Model.Activo)
+{
+    <section class="inventory-stage" aria-labelledby="inventory-opening-title">
+        <h2 id="inventory-opening-title">Apertura pendiente</h2>
+        <p>El stock antiguo todavía rige las ventas. Para activar este almacén hay que contar físicamente todos los artículos, incluso los que tengan cero unidades. No se copiarán cantidades antiguas automáticamente.</p>
+        <p>Al iniciar se pausarán ventas y devoluciones hasta que apruebes o anules el conteo. Coordina el momento con el taller.</p>
+        <form asp-action="Iniciar" method="post"><button class="btn btn-primary" type="submit">Iniciar conteo y pausar ventas</button></form>
+    </section>
+}
+else
+{
+    <section class="inventory-stage" aria-labelledby="inventory-balance-title">
+        <div class="inventory-section-heading"><div><h2 id="inventory-balance-title">Existencias actuales</h2><p>Activado el @Model.FechaActivacionUtc?.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm") (hora peruana).</p></div>
+            <form asp-action="Iniciar" method="post"><button class="btn btn-outline-primary" type="submit">Iniciar corte físico</button></form>
+        </div>
+        @if (Model.Saldos.Count == 0) { <p class="empty-state">Todavía no hay saldos registrados.</p> }
+        else
+        {
+            <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Artículo</th><th scope="col" class="text-end">Unidades disponibles</th></tr></thead><tbody>
+            @foreach (var saldo in Model.Saldos)
+            { <tr><th scope="row">@saldo.Nombre</th><td class="text-end">@saldo.CantidadBase.ToString("0.###", peru)</td></tr> }
+            </tbody></table></div>
+        }
+    </section>
+    <section class="inventory-stage" aria-labelledby="inventory-receipt-title">
+        <h2 id="inventory-receipt-title">Registrar entrada física</h2>
+        <p>Solo para artículos recibidos o incorporados físicamente. La entrada no modifica el costo ni crea una compra histórica.</p>
+        <form asp-action="Entrada" method="post" class="inventory-entry-form">
+            <div class="form-group"><label for="IdProducto">Artículo</label><select id="IdProducto" name="IdProducto" class="form-select" required><option value="">Selecciona un artículo</option>
+            @foreach (var saldo in Model.Saldos) { <option value="@saldo.IdProducto">@saldo.Nombre</option> }
+            </select></div>
+            <div class="form-group"><label for="CantidadBase">Cantidad en unidades</label><input id="CantidadBase" name="CantidadBase" type="number" min="0.001" step="0.001" class="form-control" required /></div>
+            <div class="form-group"><label for="Motivo">Motivo / referencia</label><input id="Motivo" name="Motivo" maxlength="500" class="form-control" required placeholder="Ej. recepción física registrada" /></div>
+            <button class="btn btn-primary" type="submit">Registrar entrada</button>
+        </form>
+    </section>
+}
+
+@if (Model.Cortes.Count > 0)
+{
+    <section class="inventory-stage" aria-labelledby="inventory-history-title"><h2 id="inventory-history-title">Cortes</h2>
+    <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Corte</th><th scope="col">Fecha (Perú)</th><th scope="col">Estado</th></tr></thead><tbody>
+    @foreach (var item in Model.Cortes) { <tr><th scope="row">#@item.IdCorteInventario</th><td>@item.FechaUtc.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm")</td><td>@item.Estado</td></tr> }
+    </tbody></table></div></section>
+}
+@if (Model.Movimientos.Count > 0)
+{
+    <section class="inventory-stage" aria-labelledby="inventory-kardex-title"><h2 id="inventory-kardex-title">Kárdex reciente</h2>
+    <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Fecha (Perú)</th><th scope="col">Artículo</th><th scope="col">Movimiento</th><th scope="col" class="text-end">Cantidad</th><th scope="col" class="text-end">Saldo</th><th scope="col">Referencia</th></tr></thead><tbody>
+    @foreach (var item in Model.Movimientos) { <tr><td>@item.FechaUtc.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm")</td><th scope="row">@item.Producto.Nombre</th><td>@item.TipoMovimiento</td><td class="text-end">@item.CantidadBase.ToString("0.###", peru)</td><td class="text-end">@item.SaldoPosteriorBase.ToString("0.###", peru)</td><td>@(item.TipoReferencia is null ? item.Observaciones : $"{item.TipoReferencia} #{item.IdReferencia}")</td></tr> }
+    </tbody></table></div></section>
+}

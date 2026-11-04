@@ -23,6 +23,9 @@
         <dd class = "col-sm-10">
             @Html.DisplayFor(model => model.Contacto)
         </dd>
+        <dt class="col-sm-2">RUC</dt><dd class="col-sm-10">@(Model.Ruc ?? "Pendiente")</dd>
+        <dt class="col-sm-2">Dirección</dt><dd class="col-sm-10">@(Model.Direccion ?? "Pendiente")</dd>
+        <dt class="col-sm-2">Ubigeo</dt><dd class="col-sm-10">@(Model.Ubigeo is null ? "Pendiente" : $"{Model.Ubigeo.Descripcion} ({Model.Ubigeo.Codigo})")</dd>
     </dl>
 </div>
 <div class="page-actions">

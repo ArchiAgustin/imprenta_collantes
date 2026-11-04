@@ -1,0 +1,35 @@
+@model ProyectoFinal.Models.Cliente
+@using ProyectoFinal.Models
+@{
+    var tipos = (IEnumerable<DocumentoIdentidadTipo>)ViewBag.TiposDocumento;
+}
+<div class="identity-form-grid">
+    <div class="form-group">
+        <label asp-for="IdDocumentoIdentidadTipo">Tipo de documento</label>
+        <select asp-for="IdDocumentoIdentidadTipo" class="form-select" data-document-type>
+            <option value="">Selecciona DNI o RUC</option>
+            @foreach (var tipo in tipos) { <option value="@tipo.IdDocumentoIdentidadTipo" data-codigo="@tipo.Codigo">@tipo.Abreviatura</option> }
+        </select>
+        <span asp-validation-for="IdDocumentoIdentidadTipo" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="NumeroDocumento">Número de documento</label>
+        <input asp-for="NumeroDocumento" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="11" autocomplete="off" />
+        <span asp-validation-for="NumeroDocumento" class="text-danger"></span>
+    </div>
+</div>
+<div class="form-group">
+    <label asp-for="Nombre">Nombre o razón social</label>
+    <input asp-for="Nombre" class="form-control" maxlength="100" />
+    <span asp-validation-for="Nombre" class="text-danger"></span>
+</div>
+<div class="form-group">
+    <label asp-for="Direccion">Dirección <span class="field-optional" data-address-optional>(opcional para DNI)</span></label>
+    <input asp-for="Direccion" class="form-control" maxlength="255" />
+    <span asp-validation-for="Direccion" class="text-danger"></span>
+</div>
+<partial name="_UbigeoFields" />
+<div class="identity-form-grid">
+    <div class="form-group"><label asp-for="Correo">Correo <span class="field-optional">(opcional)</span></label><input asp-for="Correo" type="email" class="form-control" /><span asp-validation-for="Correo" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="Telefono">Teléfono <span class="field-optional">(opcional)</span></label><input asp-for="Telefono" class="form-control" /><span asp-validation-for="Telefono" class="text-danger"></span></div>
+</div>

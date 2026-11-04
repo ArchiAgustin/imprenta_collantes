@@ -26,6 +26,7 @@ else
             <th>
                 @Html.DisplayNameFor(model => model.Contacto)
             </th>
+            <th>RUC</th><th>Dirección</th><th>Ubigeo</th>
             <th scope="col"><span class="visually-hidden">Acciones</span></th>
         </tr>
     </thead>
@@ -38,6 +39,7 @@ else
             <td>
                 @Html.DisplayFor(modelItem => item.Contacto)
             </td>
+            <td>@(item.Ruc ?? "Pendiente")</td><td>@(item.Direccion ?? "Pendiente")</td><td>@(item.Ubigeo?.Descripcion ?? "Pendiente")</td>
             <td>
                 <div class="table-actions">
                     <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@item.IdProveedor">Editar</a>

@@ -3,13 +3,53 @@
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Nueva cotización";
+    var peru = CultureInfo.GetCultureInfo("es-PE");
 }
 
-<h1>Nueva cotización</h1>
-<p class="intro">Elige el cliente y arma la cotización con productos del catálogo. Los importes se calculan al guardar.</p>
+<h1>@(Model.IdCotizacionOrigen is null ? "Nueva cotización" : "Revalidar cotización")</h1>
+@if (Model.IdCotizacionOrigen is { } origen)
+{
+    <p class="status-note">Revisa cliente, cantidades, precios y vigencia de la cotización vencida #@origen. Al guardar se emitirá una nueva cotización; la original no cambiará.</p>
+}
+<p class="intro">Elige el cliente y arma la cotización con productos del catálogo. Los importes se calculan al guardar. Cuando hay costo conocido, el precio sin IGV debe conservar al menos un 10 % de margen bruto.</p>
+<div class="page-actions"><a class="btn btn-outline-primary" asp-controller="PreCotizacion" asp-action="Index">Preparar desde solicitud con IA</a></div>
 
-<form asp-action="Create" method="post" class="quote-editor" data-quote-editor data-tax-rate="0.18" data-next-index="@Model.Lineas.Count">
+<form asp-controller="Cotizacions" asp-action="Create" method="post" class="quote-editor" data-quote-editor data-tax-rate="0.18" data-next-index="@Model.Lineas.Count">
+    <input type="hidden" asp-for="IdCotizacionOrigen" />
     <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    @if (Model.ReferenciasPrecio.Count > 0)
+    {
+        <section class="quote-price-guidance" aria-labelledby="quote-price-guidance-title" data-price-guidance>
+            <div class="quote-price-guidance-heading"><div><h2 id="quote-price-guidance-title">Referencia de precio</h2><p>Para el cliente y las cantidades seleccionadas. Calculada en el servidor, sin enviar costos ni historial a Groq.</p></div><span class="role-badge">Margen mínimo 10 %</span></div>
+            <ul class="quote-price-guidance-list">
+            @foreach (var reference in Model.ReferenciasPrecio)
+            {
+                <li><strong>@reference.NombreProducto</strong><span>@reference.CantidadSolicitada unidad@(reference.CantidadSolicitada == 1 ? "" : "es")</span>
+                    @if (reference.PrecioMinimoSinIgv is { } minimo)
+                    {
+                        <p>Mínimo por unidad sin IGV: <strong>@minimo.ToString("C2", peru)</strong>@(reference.CostoEstimado ? " · basado en costo estimado de servicio" : "").</p>
+                        @if (reference.DescuentoMaximoPorcentaje is { } descuento)
+                        {
+                            <p>Desde el precio actual de catálogo (@reference.PrecioCatalogoSinIgv!.Value.ToString("C2", peru)), el descuento máximo compatible es <strong>@descuento.ToString("N2", peru) %</strong>. Es un límite, no una oferta recomendada.</p>
+                        }
+                        else { <p class="text-danger">El catálogo no tiene precio válido sobre este mínimo. Revisa el precio antes de guardar.</p> }
+                    }
+                    else { <p>No se calcula descuento: falta un costo unitario mayor que cero. No se asume costo cero.</p> }
+                    @if (reference.UltimoPrecioClienteSinIgv is { } anterior)
+                    {
+                        <p>Última venta confirmada a este cliente: @anterior.ToString("C2", peru) sin IGV por unidad (@reference.UltimaCantidadCliente unidades).
+                        @if (reference.PrecioHistoricoAplicableSinIgv is { } historico)
+                        { <span>Referencia para evaluar: <strong>@historico.ToString("C2", peru)</strong> sin IGV; no se aplicó automáticamente.</span> }
+                        else { <span>No se propone repetirla: puede quedar bajo el mínimo, superar el catálogo o corresponder a mayor tiraje.</span> }
+                        </p>
+                    }
+                </li>
+            }
+            </ul>
+            <p class="quote-price-guidance-note">Si cambias cliente, producto, cantidad o precio, estas referencias dejan de corresponder. El servidor vuelve a validar el margen al guardar y antes de confirmar la venta.</p>
+            <p class="quote-price-guidance-note" data-price-guidance-stale hidden role="status">Editaste la cotización: las referencias anteriores ya no corresponden a estos datos.</p>
+        </section>
+    }
     <div class="quote-layout">
         <section class="quote-card quote-header-card" aria-labelledby="quote-header-heading">
             <div class="quote-card-heading">
@@ -33,7 +73,7 @@
             </div>
 
             <div class="form-group">
-                <label asp-for="FechaVencimiento" class="control-label">Vigencia hasta <span class="field-optional">(opcional)</span></label>
+                <label asp-for="FechaVencimiento" class="control-label">Vigencia hasta (7 días de forma predeterminada)</label>
                 <input asp-for="FechaVencimiento" type="date" class="form-control" />
                 <span asp-validation-for="FechaVencimiento" class="text-danger"></span>
             </div>
@@ -79,7 +119,7 @@
                                     <option value="">Selecciona del catálogo</option>
                                     @foreach (var producto in Model.Productos)
                                     {
-                                        <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" selected="@(Model.Lineas[index].ProductoId == producto.IdProducto ? "selected" : null)">@producto.Nombre</option>
+                                        <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" selected="@(Model.Lineas[index].ProductoId == producto.IdProducto ? "selected" : null)">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
                                     }
                                 </select>
                                 <span asp-validation-for="Lineas[index].ProductoId" class="text-danger"></span>
@@ -91,7 +131,7 @@
                                     <span asp-validation-for="Lineas[index].Cantidad" class="text-danger"></span>
                                 </div>
                                 <div class="form-group">
-                                    <label asp-for="Lineas[index].PrecioUnitario" class="control-label">Precio unitario</label>
+                                    <label asp-for="Lineas[index].PrecioUnitario" class="control-label">Precio unitario sin IGV</label>
                                     <div class="input-with-prefix"><span>S/</span><input asp-for="Lineas[index].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" /></div>
                                     <span asp-validation-for="Lineas[index].PrecioUnitario" class="text-danger"></span>
                                 </div>
@@ -110,7 +150,7 @@
                                 <option value="">Selecciona del catálogo</option>
                                 @foreach (var producto in Model.Productos)
                                 {
-                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")">@producto.Nombre</option>
+                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
                                 }
                             </select>
                             <span class="text-danger" data-valmsg-for="Lineas[__index__].ProductoId" data-valmsg-replace="true"></span>
@@ -122,7 +162,7 @@
                                 <span class="text-danger" data-valmsg-for="Lineas[__index__].Cantidad" data-valmsg-replace="true"></span>
                             </div>
                             <div class="form-group">
-                                <label class="control-label" for="Lineas___index___PrecioUnitario">Precio unitario</label>
+                                <label class="control-label" for="Lineas___index___PrecioUnitario">Precio unitario sin IGV</label>
                                 <div class="input-with-prefix"><span>S/</span><input id="Lineas___index___PrecioUnitario" name="Lineas[__index__].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" value="0.00" data-val="true" data-val-range="Ingresa un precio válido." data-val-range-min="0" data-val-range-max="99999999.99" /></div>
                                 <span class="text-danger" data-valmsg-for="Lineas[__index__].PrecioUnitario" data-valmsg-replace="true"></span>
                             </div>

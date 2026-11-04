@@ -8,23 +8,26 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ProyectoFinal.Data;
 using ProyectoFinal.Models;
+using ProyectoFinal.Services;
 
 namespace ProyectoFinal.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class ClientesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IdentificacionService _identificacion;
 
-        public ClientesController(ApplicationDbContext context)
+        public ClientesController(ApplicationDbContext context, IdentificacionService identificacion)
         {
             _context = context;
+            _identificacion = identificacion;
         }
 
         // GET: Clientes
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Cliente.ToListAsync());
+            return View(await _context.Cliente.AsNoTracking().Include(item => item.DocumentoIdentidadTipo).Include(item => item.Ubigeo).ToListAsync());
         }
 
         // GET: Clientes/Details/5
@@ -35,7 +38,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var cliente = await _context.Cliente
+            var cliente = await _context.Cliente.Include(item => item.DocumentoIdentidadTipo).Include(item => item.Ubigeo)
                 .FirstOrDefaultAsync(m => m.IdCliente == id);
             if (cliente == null)
             {
@@ -46,8 +49,9 @@ namespace ProyectoFinal.Controllers
         }
 
         // GET: Clientes/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            await _identificacion.CargarCatalogosAsync(this, null);
             return View();
         }
 
@@ -56,16 +60,17 @@ namespace ProyectoFinal.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("IdCliente,Nombre,Correo,Telefono,Direccion,Dni")] Cliente cliente)
+        public async Task<IActionResult> Create([Bind("Nombre,Correo,Telefono,Direccion,IdDocumentoIdentidadTipo,NumeroDocumento,UbigeoCodigo")] Cliente cliente)
         {
-            if (string.IsNullOrWhiteSpace(cliente.Nombre))
-                ModelState.AddModelError(nameof(Cliente.Nombre), "Ingresa el nombre del cliente.");
+            var (tipo, _) = await _identificacion.ValidarClienteAsync(cliente, null, ModelState);
             if (ModelState.IsValid)
             {
+                if (tipo?.Codigo == "1") cliente.Dni = cliente.NumeroDocumento;
                 _context.Add(cliente);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            await _identificacion.CargarCatalogosAsync(this, cliente.UbigeoCodigo);
             return View(cliente);
         }
 
@@ -82,6 +87,7 @@ namespace ProyectoFinal.Controllers
             {
                 return NotFound();
             }
+            await _identificacion.CargarCatalogosAsync(this, cliente.UbigeoCodigo);
             return View(cliente);
         }
 
@@ -90,20 +96,29 @@ namespace ProyectoFinal.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("IdCliente,Nombre,Correo,Telefono,Direccion,Dni")] Cliente cliente)
+        public async Task<IActionResult> Edit(int id, [Bind("IdCliente,Nombre,Correo,Telefono,Direccion,IdDocumentoIdentidadTipo,NumeroDocumento,UbigeoCodigo")] Cliente cliente)
         {
             if (id != cliente.IdCliente)
             {
                 return NotFound();
             }
 
-            if (string.IsNullOrWhiteSpace(cliente.Nombre))
-                ModelState.AddModelError(nameof(Cliente.Nombre), "Ingresa el nombre del cliente.");
+            var existing = await _context.Cliente.FindAsync(id);
+            if (existing is null) return NotFound();
+            var (tipo, _) = await _identificacion.ValidarClienteAsync(cliente, id, ModelState);
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(cliente);
+                    existing.Nombre = cliente.Nombre;
+                    existing.Correo = cliente.Correo;
+                    existing.Telefono = cliente.Telefono;
+                    existing.Direccion = cliente.Direccion;
+                    existing.IdDocumentoIdentidadTipo = cliente.IdDocumentoIdentidadTipo;
+                    existing.NumeroDocumento = cliente.NumeroDocumento;
+                    existing.UbigeoCodigo = cliente.UbigeoCodigo;
+                    // The old DNI column is retained for legacy data; keep it consistent on edit.
+                    existing.Dni = tipo?.Codigo == "1" ? cliente.NumeroDocumento : null;
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
@@ -119,6 +134,7 @@ namespace ProyectoFinal.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            await _identificacion.CargarCatalogosAsync(this, cliente.UbigeoCodigo);
             return View(cliente);
         }
 
@@ -130,7 +146,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var cliente = await _context.Cliente
+            var cliente = await _context.Cliente.Include(item => item.DocumentoIdentidadTipo).Include(item => item.Ubigeo)
                 .FirstOrDefaultAsync(m => m.IdCliente == id);
             if (cliente == null)
             {

@@ -29,10 +29,17 @@
                 <span asp-validation-for="Precio" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Stock" class="control-label"></label>
-                <input asp-for="Stock" class="form-control" />
-                <span asp-validation-for="Stock" class="text-danger"></span>
+                <label asp-for="CostoUnitarioSinIgv" class="control-label">Costo unitario sin IGV <span class="field-optional">(opcional)</span></label>
+                <input asp-for="CostoUnitarioSinIgv" class="form-control" type="number" min="0" max="99999999.99" step="0.01" />
+                <span asp-validation-for="CostoUnitarioSinIgv" class="text-danger"></span>
+                <div class="form-text">Precio de compra del artículo o costo estimado del servicio. Si se deja vacío, su utilidad no se calculará.</div>
             </div>
+            <div class="form-check my-3">
+                <input asp-for="EsServicio" class="form-check-input" />
+                <label asp-for="EsServicio" class="form-check-label"></label>
+                <div class="form-text">Los servicios no controlan ni descuentan existencias.</div>
+            </div>
+            <p class="form-text">Las existencias no se ingresan aquí. Registra un conteo físico o una entrada en Inventario.</p>
             <div class="form-group">
                 <label asp-for="IdProveedor" class="control-label"></label>
                 <select asp-for="IdProveedor" class ="form-control" asp-items="ViewBag.IdProveedor"></select>

@@ -1,12 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using ProyectoFinal.Services;
 
 namespace ProyectoFinal.Models;
 
 public sealed class CotizacionFormViewModel
 {
     public int? IdCotizacion { get; set; }
+
+    public int? IdCotizacionOrigen { get; set; }
 
     [Required(ErrorMessage = "Selecciona un cliente.")]
     [Range(1, int.MaxValue, ErrorMessage = "Selecciona un cliente válido.")]
@@ -34,6 +37,9 @@ public sealed class CotizacionFormViewModel
 
     [BindNever]
     public CotizacionTotalesViewModel Totales { get; private set; } = new();
+
+    [BindNever]
+    public IReadOnlyList<ReferenciaPrecio> ReferenciasPrecio { get; set; } = Array.Empty<ReferenciaPrecio>();
 
     public void RecalcularTotales()
     {

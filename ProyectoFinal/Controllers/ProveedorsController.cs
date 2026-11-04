@@ -8,23 +8,26 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ProyectoFinal.Data;
 using ProyectoFinal.Models;
+using ProyectoFinal.Services;
 
 namespace ProyectoFinal.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class ProveedorsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IdentificacionService _identificacion;
 
-        public ProveedorsController(ApplicationDbContext context)
+        public ProveedorsController(ApplicationDbContext context, IdentificacionService identificacion)
         {
             _context = context;
+            _identificacion = identificacion;
         }
 
         // GET: Proveedors
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Proveedor.ToListAsync());
+            return View(await _context.Proveedor.AsNoTracking().Include(item => item.Ubigeo).ToListAsync());
         }
 
         // GET: Proveedors/Details/5
@@ -35,7 +38,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var proveedor = await _context.Proveedor
+            var proveedor = await _context.Proveedor.Include(item => item.Ubigeo)
                 .FirstOrDefaultAsync(m => m.IdProveedor == id);
             if (proveedor == null)
             {
@@ -46,8 +49,9 @@ namespace ProyectoFinal.Controllers
         }
 
         // GET: Proveedors/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            await _identificacion.CargarCatalogosAsync(this, null);
             return View();
         }
 
@@ -56,16 +60,16 @@ namespace ProyectoFinal.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("IdProveedor,Nombre,Contacto")] Proveedor proveedor)
+        public async Task<IActionResult> Create([Bind("Nombre,Contacto,Ruc,Direccion,UbigeoCodigo")] Proveedor proveedor)
         {
-            if (string.IsNullOrWhiteSpace(proveedor.Nombre))
-                ModelState.AddModelError(nameof(Proveedor.Nombre), "Ingresa el nombre del proveedor.");
+            await _identificacion.ValidarProveedorAsync(proveedor, null, ModelState);
             if (ModelState.IsValid)
             {
                 _context.Add(proveedor);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            await _identificacion.CargarCatalogosAsync(this, proveedor.UbigeoCodigo);
             return View(proveedor);
         }
 
@@ -82,6 +86,7 @@ namespace ProyectoFinal.Controllers
             {
                 return NotFound();
             }
+            await _identificacion.CargarCatalogosAsync(this, proveedor.UbigeoCodigo);
             return View(proveedor);
         }
 
@@ -90,20 +95,25 @@ namespace ProyectoFinal.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("IdProveedor,Nombre,Contacto")] Proveedor proveedor)
+        public async Task<IActionResult> Edit(int id, [Bind("IdProveedor,Nombre,Contacto,Ruc,Direccion,UbigeoCodigo")] Proveedor proveedor)
         {
             if (id != proveedor.IdProveedor)
             {
                 return NotFound();
             }
 
-            if (string.IsNullOrWhiteSpace(proveedor.Nombre))
-                ModelState.AddModelError(nameof(Proveedor.Nombre), "Ingresa el nombre del proveedor.");
+            var existing = await _context.Proveedor.FindAsync(id);
+            if (existing is null) return NotFound();
+            await _identificacion.ValidarProveedorAsync(proveedor, id, ModelState);
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(proveedor);
+                    existing.Nombre = proveedor.Nombre;
+                    existing.Contacto = proveedor.Contacto;
+                    existing.Ruc = proveedor.Ruc;
+                    existing.Direccion = proveedor.Direccion;
+                    existing.UbigeoCodigo = proveedor.UbigeoCodigo;
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
@@ -119,6 +129,7 @@ namespace ProyectoFinal.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            await _identificacion.CargarCatalogosAsync(this, proveedor.UbigeoCodigo);
             return View(proveedor);
         }
 
@@ -130,7 +141,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var proveedor = await _context.Proveedor
+            var proveedor = await _context.Proveedor.Include(item => item.Ubigeo)
                 .FirstOrDefaultAsync(m => m.IdProveedor == id);
             if (proveedor == null)
             {

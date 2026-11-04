@@ -1,0 +1,8 @@
+@model ProyectoFinal.Models.Proveedor
+<div class="identity-form-grid">
+    <div class="form-group"><label asp-for="Nombre">Nombre del proveedor</label><input asp-for="Nombre" class="form-control" maxlength="100" /><span asp-validation-for="Nombre" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="Ruc">RUC</label><input asp-for="Ruc" class="form-control" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" /><span asp-validation-for="Ruc" class="text-danger"></span></div>
+</div>
+<div class="form-group"><label asp-for="Direccion">Dirección</label><input asp-for="Direccion" class="form-control" maxlength="255" /><span asp-validation-for="Direccion" class="text-danger"></span></div>
+<partial name="_UbigeoFields" />
+<div class="form-group"><label asp-for="Contacto">Contacto <span class="field-optional">(opcional)</span></label><input asp-for="Contacto" class="form-control" /><span asp-validation-for="Contacto" class="text-danger"></span></div>

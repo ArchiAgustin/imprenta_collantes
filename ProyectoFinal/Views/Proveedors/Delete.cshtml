@@ -25,6 +25,7 @@
         <dd class = "col-sm-10">
             @Html.DisplayFor(model => model.Contacto)
         </dd>
+        <dt class="col-sm-2">RUC</dt><dd class="col-sm-10">@(Model.Ruc ?? "Pendiente")</dd>
     </dl>
     
     <form asp-action="Delete" method="post" class="page-actions">

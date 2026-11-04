@@ -1,0 +1,34 @@
+@using ProyectoFinal.Models
+@{
+    var departamentos = (IEnumerable<Ubigeo>)ViewBag.Departamentos;
+    var provincias = (IEnumerable<Ubigeo>)ViewBag.Provincias;
+    var distritos = (IEnumerable<Ubigeo>)ViewBag.Distritos;
+    string? departamento = ViewBag.DepartamentoSeleccionado;
+    string? provincia = ViewBag.ProvinciaSeleccionada;
+    string? distrito = ViewBag.DistritoSeleccionado;
+}
+<fieldset class="ubigeo-selector" data-ubigeo-selector data-url="@Url.Action("Hijos", "Ubigeos")">
+    <legend>Ubigeo <span class="field-optional" data-ubigeo-optional>(opcional para DNI)</span></legend>
+    <div class="identity-form-grid">
+        <div class="form-group"><label for="UbigeoDepartamento">Departamento</label>
+            <select id="UbigeoDepartamento" class="form-select" data-departamento>
+                <option value="">Selecciona departamento</option>
+                @foreach (var item in departamentos) { <option value="@item.Codigo" selected="@(departamento == item.Codigo ? "selected" : null)">@item.Descripcion</option> }
+            </select>
+        </div>
+        <div class="form-group"><label for="UbigeoProvincia">Provincia</label>
+            <select id="UbigeoProvincia" class="form-select" data-provincia disabled="@(departamento is null ? "disabled" : null)">
+                <option value="">Selecciona provincia</option>
+                @foreach (var item in provincias) { <option value="@item.Codigo" selected="@(provincia == item.Codigo ? "selected" : null)">@item.Descripcion</option> }
+            </select>
+        </div>
+        <div class="form-group"><label for="UbigeoCodigo">Distrito</label>
+            <select id="UbigeoCodigo" name="UbigeoCodigo" class="form-select" data-distrito disabled="@(provincia is null ? "disabled" : null)">
+                <option value="">Selecciona distrito</option>
+                @foreach (var item in distritos) { <option value="@item.Codigo" selected="@(distrito == item.Codigo ? "selected" : null)">@item.Descripcion</option> }
+            </select>
+            @Html.ValidationMessage("UbigeoCodigo", new { @class = "text-danger" })
+        </div>
+    </div>
+    <p class="auth-footnote" role="status" data-ubigeo-status hidden>No se pudieron cargar los ubigeos. Vuelve a seleccionar la ubicación.</p>
+</fieldset>

@@ -1,0 +1,33 @@
+@model IReadOnlyList<Microsoft.AspNetCore.Identity.IdentityRole>
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Permisos de menú";
+}
+
+<h1>Permisos por rol</h1>
+<p class="intro">Administra qué módulos y operaciones puede utilizar cada rol. El rol Admin conserva acceso total.</p>
+
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead><tr><th>Rol</th><th>Tipo de acceso</th><th><span class="visually-hidden">Acciones</span></th></tr></thead>
+        <tbody>
+        @foreach (var role in Model)
+        {
+            <tr>
+                <th scope="row">@role.Name</th>
+                <td>@(string.Equals(role.Name, "Admin", StringComparison.OrdinalIgnoreCase) ? "Acceso total protegido" : "Matriz administrable")</td>
+                <td class="text-end">
+                    @if (!string.Equals(role.Name, "Admin", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Editar" asp-route-id="@role.Id">Configurar permisos</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No restringible</span>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

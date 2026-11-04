@@ -1,0 +1,45 @@
+@model IReadOnlyList<ProyectoFinal.Models.AuditoriaOperacion>
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Auditoría";
+    var emails = ViewBag.UserEmails as IReadOnlyDictionary<string, string> ?? new Dictionary<string, string>();
+}
+
+<h1>Historial de auditoría</h1>
+<p class="intro">Registro cronológico de cotizaciones, ventas y trabajos. Visible solo para administradores.</p>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-sm-4"><label class="form-label" for="tipoEntidad">Entidad</label><select class="form-select" id="tipoEntidad" name="tipoEntidad">
+        <option value="">Todas</option>
+        @foreach (var type in new[] { "Cotizacion", "Venta", "Pedido" })
+        {
+            <option value="@type" selected="@(ViewBag.TipoEntidad as string == type ? "selected" : null)">@type</option>
+        }
+    </select></div>
+    <div class="col-sm-3"><label class="form-label" for="idEntidad">ID</label><input class="form-control" type="number" min="1" id="idEntidad" name="idEntidad" value="@ViewBag.IdEntidad" /></div>
+    <div class="col-sm-2 align-self-end"><button class="btn btn-outline-primary" type="submit">Filtrar</button></div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state" role="status"><strong>No hay eventos para mostrar.</strong><p>El historial aparecerá cuando se emitan cotizaciones o se procesen ventas y trabajos.</p></div>
+}
+else
+{
+    <div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>Fecha (UTC)</th><th>Entidad</th><th>Acción</th><th>Estado</th><th>Usuario</th><th>Detalle</th></tr></thead>
+        <tbody>
+        @foreach (var entry in Model)
+        {
+            <tr>
+                <td>@entry.FechaUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@entry.TipoEntidad #@entry.IdEntidad</td>
+                <td>@entry.Accion</td>
+                <td>@(entry.EstadoAnterior is null ? "—" : entry.EstadoAnterior) → @(entry.EstadoNuevo ?? "—")</td>
+                <td>@(entry.IdUsuario is not null && emails.TryGetValue(entry.IdUsuario, out var email) ? email : "Sistema / usuario no disponible")</td>
+                <td>@entry.Detalle</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}

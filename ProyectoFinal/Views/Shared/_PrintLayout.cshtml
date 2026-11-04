@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] · Imprenta Collantes</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/print-document.css" asp-append-version="true" />
+</head>
+<body class="print-body">
+    <nav class="print-toolbar" aria-label="Acciones de impresión"><button type="button" onclick="window.print()">Imprimir o guardar en PDF</button><button type="button" onclick="window.close()">Cerrar</button></nav>
+    <main class="print-sheet">@RenderBody()</main>
+</body>
+</html>

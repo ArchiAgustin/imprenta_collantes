@@ -8,6 +8,12 @@
     const addButton = form.querySelector('[data-add-line]');
     const taxRate = Number(form.dataset.taxRate || 0.18);
     const currency = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
+    const advice = form.querySelector('[data-price-guidance]');
+    function markAdviceOutdated() {
+        if (!advice) return;
+        advice.querySelector('[data-price-guidance-stale]').hidden = false;
+        advice.classList.add('is-outdated');
+    }
 
     const money = (amount) => currency.format(amount);
 
@@ -59,6 +65,7 @@
     }
 
     addButton?.addEventListener('click', () => {
+        markAdviceOutdated();
         const index = Number(form.dataset.nextIndex || lines.children.length);
         const row = template.content.firstElementChild.cloneNode(true);
         row.querySelectorAll('[name], [id], [for], [data-valmsg-for], [aria-describedby]').forEach((element) => {
@@ -75,11 +82,13 @@
     lines.addEventListener('click', (event) => {
         const button = event.target.closest('[data-remove-line]');
         if (!button || lines.querySelectorAll('[data-quote-line]').length <= 1) return;
+        markAdviceOutdated();
         button.closest('[data-quote-line]').remove();
         renumberLines();
     });
 
     lines.addEventListener('change', (event) => {
+        if (event.target.matches('.quote-product-select')) markAdviceOutdated();
         if (event.target.matches('.quote-product-select')) {
             const selected = event.target.selectedOptions[0];
             const price = selected?.dataset.unitPrice;
@@ -89,8 +98,9 @@
     });
 
     lines.addEventListener('input', (event) => {
-        if (event.target.matches('.quote-quantity, .quote-price')) recalculate();
+        if (event.target.matches('.quote-quantity, .quote-price')) { markAdviceOutdated(); recalculate(); }
     });
+    form.querySelector('[name="ClienteId"]')?.addEventListener('change', markAdviceOutdated);
 
     renumberLines();
 })();

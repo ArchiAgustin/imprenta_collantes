@@ -1,7 +1,12 @@
+@inject ProyectoFinal.Services.IMenuAccessService MenuAccess
 @{
     Layout = null;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var isPanel = ViewContext.RouteData.Values["page"]?.ToString() == "/Usuario/Panel";
+    var isAdmin = User.IsInRole("Admin");
+    var menus = User.Identity?.IsAuthenticated == true
+        ? await MenuAccess.GetNavigationMenusAsync(User)
+        : Array.Empty<ProyectoFinal.Services.MenuNavigationItem>();
 }
 <!doctype html>
 <html lang="es">
@@ -30,13 +35,21 @@
         <nav id="panelNav" class="panel-nav collapse d-lg-block" aria-label="Módulos">
             <div class="nav-heading">ÁREA DE TRABAJO</div>
             <a class="panel-link @(isPanel ? "is-current" : "")" asp-area="Identity" asp-page="/Usuario/Panel" aria-current="@(isPanel ? "page" : null)">Inicio</a>
-            <a class="panel-link @(controller == "Clientes" ? "is-current" : "")" asp-area="" asp-controller="Clientes" asp-action="Index" aria-current="@(controller == "Clientes" ? "page" : null)">Clientes</a>
-            <a class="panel-link @(controller == "Proveedors" ? "is-current" : "")" asp-area="" asp-controller="Proveedors" asp-action="Index" aria-current="@(controller == "Proveedors" ? "page" : null)">Proveedores</a>
-            <a class="panel-link @(controller == "Productoes" ? "is-current" : "")" asp-area="" asp-controller="Productoes" asp-action="Index" aria-current="@(controller == "Productoes" ? "page" : null)">Productos</a>
-            <a class="panel-link @(controller == "Cotizacions" ? "is-current" : "")" asp-area="" asp-controller="Cotizacions" asp-action="Index" aria-current="@(controller == "Cotizacions" ? "page" : null)">Cotizaciones</a>
-            <div class="nav-heading nav-heading-spaced">ADMINISTRACIÓN</div>
-            <a class="panel-link @(controller == "Admin" ? "is-current" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(controller == "Admin" ? "page" : null)">Usuarios</a>
-            <a class="panel-link @(controller == "Roles" ? "is-current" : "")" asp-area="" asp-controller="Roles" asp-action="Index" aria-current="@(controller == "Roles" ? "page" : null)">Roles</a>
+            @foreach (var menu in menus)
+            {
+                <a class="panel-link @(controller == menu.ControllerNombre ? "is-current" : "")" asp-area="" asp-controller="@menu.ControllerNombre" asp-action="Index" aria-current="@(controller == menu.ControllerNombre ? "page" : null)">@menu.Nombre</a>
+            }
+            @if (isAdmin)
+            {
+                <div class="nav-heading nav-heading-spaced">ADMINISTRACIÓN</div>
+                <a class="panel-link @(controller == "SeriesInternas" ? "is-current" : "")" asp-area="" asp-controller="SeriesInternas" asp-action="Index" aria-current="@(controller == "SeriesInternas" ? "page" : null)">Series internas</a>
+                <a class="panel-link @(controller == "Inventario" ? "is-current" : "")" asp-area="" asp-controller="Inventario" asp-action="Index" aria-current="@(controller == "Inventario" ? "page" : null)">Inventario · Almacén principal</a>
+                <a class="panel-link @(controller == "Admin" ? "is-current" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(controller == "Admin" ? "page" : null)">Usuarios</a>
+                <a class="panel-link @(controller == "Roles" ? "is-current" : "")" asp-area="" asp-controller="Roles" asp-action="Index" aria-current="@(controller == "Roles" ? "page" : null)">Roles</a>
+                <a class="panel-link @(controller == "Permisos" ? "is-current" : "")" asp-area="" asp-controller="Permisos" asp-action="Index" aria-current="@(controller == "Permisos" ? "page" : null)">Permisos de menú</a>
+                <a class="panel-link @(controller == "Auditoria" ? "is-current" : "")" asp-area="" asp-controller="Auditoria" asp-action="Index" aria-current="@(controller == "Auditoria" ? "page" : null)">Auditoría</a>
+                <a class="panel-link @(controller == "Analytics" ? "is-current" : "")" asp-area="" asp-controller="Analytics" asp-action="Index" aria-current="@(controller == "Analytics" ? "page" : null)">Analítica</a>
+            }
             <div class="nav-footer">Un espacio para cada trabajo.</div>
         </nav>
         <main id="contenido" class="panel-main" role="main">

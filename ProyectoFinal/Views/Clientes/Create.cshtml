@@ -1,54 +1,10 @@
-﻿@model ProyectoFinal.Models.Cliente
-
-@{
-    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
-    ViewData["Title"] = "Nuevo cliente";
-}
-
+@model ProyectoFinal.Models.Cliente
+@{ Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml"; ViewData["Title"] = "Nuevo cliente"; }
 <h1>Nuevo cliente</h1>
-
-<h4>Cliente</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Nombre" class="control-label"></label>
-                <input asp-for="Nombre" class="form-control" />
-                <span asp-validation-for="Nombre" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Correo" class="control-label"></label>
-                <input asp-for="Correo" class="form-control" />
-                <span asp-validation-for="Correo" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Telefono" class="control-label"></label>
-                <input asp-for="Telefono" class="form-control" />
-                <span asp-validation-for="Telefono" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Direccion" class="control-label"></label>
-                <input asp-for="Direccion" class="form-control" />
-                <span asp-validation-for="Direccion" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Dni" class="control-label"></label>
-                <input asp-for="Dni" class="form-control" />
-                <span asp-validation-for="Dni" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Guardar cliente" class="btn btn-primary" />
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="page-actions">
-    <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver a clientes</a>
-</div>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}
+<p class="intro">Identifica al cliente con DNI o RUC. Para empresas, registra dirección y ubigeo.</p>
+<form asp-action="Create" method="post" class="identity-form">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <partial name="_ClienteFormFields" model="Model" />
+    <div class="page-actions"><a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a><button type="submit" class="btn btn-primary">Guardar cliente</button></div>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /><script src="~/js/identidad-form.js" asp-append-version="true"></script> }

@@ -1,0 +1,77 @@
+@model ProyectoFinal.Models.PreCotizacionViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Preparar cotización";
+}
+
+<div class="page-heading-row">
+    <div><h1>Preparar una cotización</h1><p class="intro">Organiza el pedido del cliente con ayuda de IA. Ninguna sugerencia se guarda sin tu revisión.</p></div>
+    <a asp-controller="Cotizacions" asp-action="Create" class="btn btn-outline-secondary">Ir al formulario manual</a>
+</div>
+
+<div class="assistant-privacy" role="note">
+    <strong>Antes de usar Groq</strong>
+    <p>Se ocultarán correos, teléfonos, documentos, enlaces y algunos campos identificables. Los nombres o direcciones escritos libremente pueden escapar a la detección: revisa el texto exacto que se enviará y elimina cualquier dato personal restante. No se envía el catálogo ni se crea ninguna venta o cotización.</p>
+</div>
+
+@if (Model.Aviso is not null)
+{
+    <div class="status-note" role="status">@Model.Aviso <a asp-controller="Cotizacions" asp-action="Create">Cotizar manualmente</a></div>
+}
+<div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+
+@if (Model.Analizada)
+{
+    <form asp-action="Cargar" method="post" class="assistant-review">
+        <section class="quote-card" aria-labelledby="assistant-results-heading">
+            <div class="quote-card-heading"><div><h2 id="assistant-results-heading">Revisa las líneas sugeridas</h2><p>El producto y el precio siempre provienen del catálogo; una coincidencia exacta es solo una propuesta.</p></div></div>
+            <div class="form-group">
+                <label asp-for="ClienteId" class="control-label">Cliente registrado</label>
+                <select asp-for="ClienteId" class="form-select"><option value="">Selecciona un cliente</option>
+                @foreach (var cliente in Model.Clientes) { <option value="@cliente.IdCliente">@cliente.Nombre</option> }
+                </select><span asp-validation-for="ClienteId" class="text-danger"></span>
+            </div>
+            @for (var i = 0; i < Model.Lineas.Count; i++)
+            {
+                <div class="assistant-result-line">
+                    <div><strong>@Model.Lineas[i].NombreSugerido</strong>
+                        <p>@(string.IsNullOrWhiteSpace(Model.Lineas[i].Especificacion) ? "Sin especificaciones adicionales." : Model.Lineas[i].Especificacion)</p></div>
+                    <input asp-for="Lineas[i].NombreSugerido" type="hidden" />
+                    <input asp-for="Lineas[i].Especificacion" type="hidden" />
+                    <div class="assistant-result-fields"><div class="form-group"><label asp-for="Lineas[i].ProductoId" class="control-label">Producto del catálogo</label>
+                        <select asp-for="Lineas[i].ProductoId" class="form-select"><option value="">Selecciona el producto real</option>
+                        @foreach (var producto in Model.Productos) { <option value="@producto.IdProducto">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option> }
+                        </select><span asp-validation-for="Lineas[i].ProductoId" class="text-danger"></span></div>
+                        <div class="form-group"><label asp-for="Lineas[i].Cantidad" class="control-label">Cantidad</label><input asp-for="Lineas[i].Cantidad" class="form-control" type="number" min="1" max="1000000" /><span asp-validation-for="Lineas[i].Cantidad" class="text-danger"></span></div></div>
+                </div>
+            }
+            <div asp-validation-for="Lineas" class="text-danger"></div>
+            <div class="form-group"><label asp-for="Descripcion" class="control-label">Descripción para la cotización</label>
+                <textarea asp-for="Descripcion" class="form-control" rows="4" maxlength="4000"></textarea>
+                <div class="form-text">La fecha de entrega solicitada no establece el vencimiento de la cotización.</div>
+                <span asp-validation-for="Descripcion" class="text-danger"></span></div>
+            <div class="page-actions"><button class="btn btn-primary" type="submit">Cargar y revisar precios y margen</button><a asp-controller="Cotizacions" asp-action="Create" class="btn btn-outline-secondary">Descartar y cotizar manualmente</a></div>
+        </section>
+    </form>
+}
+else if (Model.Preparada)
+{
+    <form asp-action="Analizar" method="post" class="assistant-review">
+        <section class="quote-card" aria-labelledby="assistant-preview-heading"><div class="quote-card-heading"><div><h2 id="assistant-preview-heading">Revisa el texto que se enviará</h2><p>Solo esta versión revisada se enviará a Groq. Corrige u omite datos antes de continuar.</p></div></div>
+            <div class="form-group"><label asp-for="TextoRevisado" class="control-label">Contenido para análisis</label><textarea asp-for="TextoRevisado" class="form-control" rows="9" minlength="10" maxlength="4000" required></textarea><span asp-validation-for="TextoRevisado" class="text-danger"></span></div>
+            <div class="form-check"><input asp-for="TextoAprobado" class="form-check-input" /><label asp-for="TextoAprobado" class="form-check-label">Revisé el texto y confirmé que no contiene datos personales.</label><span asp-validation-for="TextoAprobado" class="text-danger d-block"></span></div>
+            <div class="page-actions"><button type="submit" class="btn btn-primary">Enviar texto revisado a Groq</button><a asp-action="Index" class="btn btn-outline-secondary">Empezar de nuevo</a></div>
+        </section>
+    </form>
+}
+else
+{
+    <form asp-action="Preparar" method="post" class="assistant-review">
+        <section class="quote-card" aria-labelledby="assistant-input-heading"><div class="quote-card-heading"><div><h2 id="assistant-input-heading">Solicitud del trabajo</h2><p>Pega aquí el mensaje. En el siguiente paso podrás revisar su versión anonimizada.</p></div></div>
+            <div class="form-group"><label asp-for="Solicitud" class="control-label">Mensaje del cliente</label><textarea asp-for="Solicitud" class="form-control" rows="10" maxlength="4000" required placeholder="Ej.: Necesito 300 volantes A5 a color, papel couché; entrega para el viernes."></textarea><span asp-validation-for="Solicitud" class="text-danger"></span></div>
+            <div class="page-actions"><button type="submit" class="btn btn-primary">Preparar texto para revisión</button></div>
+        </section>
+    </form>
+}
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

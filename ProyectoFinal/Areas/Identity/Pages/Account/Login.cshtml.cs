@@ -226,7 +226,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
 
                     var user = await _userManager.FindByEmailAsync(Input.Email);
 
-                    if (user != null && await _userManager.IsInRoleAsync(user, "Admin"))
+                    if (user != null && (await _userManager.GetRolesAsync(user)).Count > 0)
                     {
                         if (returnUrl == Url.Content("~/"))
                             return RedirectToPage("/Usuario/Panel");

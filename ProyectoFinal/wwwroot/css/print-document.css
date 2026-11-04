@@ -1,0 +1,37 @@
+.print-body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.55 system-ui, sans-serif; }
+.print-toolbar { max-width: 210mm; margin: 1.2rem auto; display: flex; justify-content: end; gap: .6rem; }
+.print-toolbar button { border: 1px solid var(--action); border-radius: .25rem; padding: .55rem .9rem; background: var(--sheet); color: var(--action-hover); cursor: pointer; }
+.print-toolbar button:first-child { background: var(--action); color: var(--sheet); }
+.print-toolbar button:focus-visible { outline: 3px solid var(--marker); outline-offset: 3px; }
+.print-sheet { box-sizing: border-box; width: min(210mm, calc(100% - 2rem)); min-height: 270mm; margin: 0 auto 2rem; padding: 20mm 18mm; background: var(--sheet); box-shadow: 0 14px 40px -26px #18383b88; }
+.print-header { display: flex; align-items: start; justify-content: space-between; gap: 1.5rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--rule); }
+.print-header > div:first-child { display: grid; grid-template-columns: 52px auto; column-gap: .7rem; align-items: center; }
+.print-header img { grid-row: span 2; }
+.print-header strong { font-size: 1.15rem; letter-spacing: .04em; }
+.print-header small { color: var(--subtle); }
+.print-number { text-align: right; overflow-wrap: anywhere; }
+.print-number span { display: block; color: var(--subtle); font-size: .78rem; font-weight: 700; letter-spacing: .08em; }
+.print-number strong { display: block; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.print-legal { margin: 1.25rem 0; border: 1px solid var(--ink); padding: .65rem .85rem; font-weight: 750; font-size: .85rem; line-height: 1.5; }
+.print-status { display: flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding: .75rem 0; font-weight: 700; }
+.print-status strong { color: var(--marker); }
+.print-facts { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem 1.5rem; padding: 1rem 0 1.6rem; margin: 0; border-top: 1px solid var(--rule); }
+.print-facts div { min-width: 0; }
+.print-facts dt { color: var(--subtle); font-size: .8rem; }
+.print-facts dd { margin: 0; overflow-wrap: anywhere; }
+.print-description { border-top: 1px solid var(--rule); padding: .9rem 0; }
+.print-description h2 { font: inherit; font-weight: 700; margin: 0 0 .25rem; }
+.print-description p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.print-lines { border-collapse: collapse; width: 100%; margin-top: .8rem; table-layout: fixed; }
+.print-lines th, .print-lines td { border-bottom: 1px solid var(--rule); padding: .6rem .4rem; text-align: left; overflow-wrap: anywhere; vertical-align: top; }
+.print-lines th:first-child { width: 46%; }
+.print-lines tbody th { font-weight: 500; }
+.print-lines .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+.print-totals { margin: 1.4rem 0 2.5rem auto; max-width: 270px; }
+.print-totals div { display: flex; justify-content: space-between; gap: 1rem; margin: .35rem 0; }
+.print-totals dd { margin: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.print-total { border-top: 1px solid var(--ink); padding-top: .65rem; font-weight: 750; }
+.print-foot { border-top: 1px solid var(--rule); padding-top: .6rem; color: var(--subtle); font-size: .8rem; }
+@media (max-width: 650px) { .print-sheet { padding: 1.25rem; min-height: 0; } .print-header { flex-wrap: wrap; } .print-number { text-align: left; } .print-facts { grid-template-columns: 1fr; } .print-lines { font-size: .8rem; } .print-totals { max-width: 100%; } }
+@page { size: A4; margin: 0; }
+@media print { .print-body { background: white; print-color-adjust: exact; } .print-toolbar { display: none; } .print-sheet { width: 100%; min-height: 0; margin: 0; box-shadow: none; padding: 18mm; } .print-lines tr, .print-facts div, .print-totals { break-inside: avoid; } }

@@ -25,6 +25,9 @@ public partial class DetalleCotizacion
     [Column("precioUnitario", TypeName = "decimal(10, 2)")]
     public decimal? PrecioUnitario { get; set; }
 
+    [Column("productoNombreEmision"), StringLength(100)]
+    public string? ProductoNombreEmision { get; set; }
+
     [ForeignKey("IdCotizacion")]
     [InverseProperty("DetalleCotizacions")]
     public virtual Cotizacion? IdCotizacionNavigation { get; set; }

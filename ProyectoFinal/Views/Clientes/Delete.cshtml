@@ -38,10 +38,10 @@
             @Html.DisplayFor(model => model.Direccion)
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Dni)
+            Documento
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Dni)
+            @(Model.DocumentoIdentidadTipo?.Abreviatura ?? (Model.Dni is null ? "Sin documento" : "DNI")) @(Model.NumeroDocumento ?? Model.Dni)
         </dd>
     </dl>
     

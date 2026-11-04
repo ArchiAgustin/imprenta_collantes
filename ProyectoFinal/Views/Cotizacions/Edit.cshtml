@@ -6,7 +6,7 @@
 }
 
 <h1>Editar cotización</h1>
-<p class="intro">Actualiza la cabecera o los productos. Se conservarán únicamente las líneas que guardes aquí.</p>
+<p class="intro">Actualiza la cabecera o los productos. Se conservarán únicamente las líneas que guardes aquí. Si el costo está registrado, cada precio sin IGV debe conservar al menos un 10 % de margen bruto.</p>
 
 <form asp-action="Edit" asp-route-id="@Model.IdCotizacion" method="post" class="quote-editor" data-quote-editor data-tax-rate="0.18" data-next-index="@Model.Lineas.Count">
     <input asp-for="IdCotizacion" type="hidden" />
@@ -29,7 +29,7 @@
                 <span asp-validation-for="ClienteId" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="FechaVencimiento" class="control-label">Vigencia hasta <span class="field-optional">(opcional)</span></label>
+                <label asp-for="FechaVencimiento" class="control-label">Vigencia hasta</label>
                 <input asp-for="FechaVencimiento" type="date" class="form-control" />
                 <span asp-validation-for="FechaVencimiento" class="text-danger"></span>
             </div>
@@ -70,7 +70,7 @@
                                     <option value="">Selecciona del catálogo</option>
                                     @foreach (var producto in Model.Productos)
                                     {
-                                        <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" selected="@(Model.Lineas[index].ProductoId == producto.IdProducto ? "selected" : null)">@producto.Nombre</option>
+                                        <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" selected="@(Model.Lineas[index].ProductoId == producto.IdProducto ? "selected" : null)">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
                                     }
                                 </select>
                                 <span asp-validation-for="Lineas[index].ProductoId" class="text-danger"></span>
@@ -82,7 +82,7 @@
                                     <span asp-validation-for="Lineas[index].Cantidad" class="text-danger"></span>
                                 </div>
                                 <div class="form-group">
-                                    <label asp-for="Lineas[index].PrecioUnitario" class="control-label">Precio unitario</label>
+                                    <label asp-for="Lineas[index].PrecioUnitario" class="control-label">Precio unitario sin IGV</label>
                                     <div class="input-with-prefix"><span>S/</span><input asp-for="Lineas[index].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" /></div>
                                     <span asp-validation-for="Lineas[index].PrecioUnitario" class="text-danger"></span>
                                 </div>
@@ -101,7 +101,7 @@
                                 <option value="">Selecciona del catálogo</option>
                                 @foreach (var producto in Model.Productos)
                                 {
-                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")">@producto.Nombre</option>
+                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
                                 }
                             </select>
                             <span class="text-danger" data-valmsg-for="Lineas[__index__].ProductoId" data-valmsg-replace="true"></span>
@@ -113,7 +113,7 @@
                                 <span class="text-danger" data-valmsg-for="Lineas[__index__].Cantidad" data-valmsg-replace="true"></span>
                             </div>
                             <div class="form-group">
-                                <label class="control-label" for="Lineas___index___PrecioUnitario">Precio unitario</label>
+                                <label class="control-label" for="Lineas___index___PrecioUnitario">Precio unitario sin IGV</label>
                                 <div class="input-with-prefix"><span>S/</span><input id="Lineas___index___PrecioUnitario" name="Lineas[__index__].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" value="0.00" data-val="true" data-val-range="Ingresa un precio válido." data-val-range-min="0" data-val-range-max="99999999.99" /></div>
                                 <span class="text-danger" data-valmsg-for="Lineas[__index__].PrecioUnitario" data-valmsg-replace="true"></span>
                             </div>

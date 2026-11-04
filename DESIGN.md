@@ -45,7 +45,7 @@ components:
 
 **Creative North Star: "Fichas de taller"**
 
-An indexed working archive, not a marketing dashboard. Navigation identifies the current module; sheets give forms and records a quiet, repeatable work surface. The original imprint mark is at `ProyectoFinal/wwwroot/img/marca-collantes.svg`. Do not add charts or operational claims until real data backs them.
+An indexed working archive, not a marketing dashboard. Navigation identifies the current module; sheets give forms and records a quiet, repeatable work surface. The original imprint mark is at `ProyectoFinal/wwwroot/img/marca-collantes.svg`. Charts and operational claims must derive from real data, never placeholders.
 
 **Key Characteristics:** visible module index, legible data, warm sheets against deep-ink navigation, one primary action per task.
 
@@ -73,9 +73,11 @@ Controls use small 0.2–0.25rem radii. The mark and the module index use geomet
 
 `_PanelLayout.cshtml` owns the module rail, active state and mobile menu. `_Layout.cshtml` owns the public/auth shell. `.module-list` and `.module-item` are action links, not statistics. Forms show inline validation and a clear way back; empty lists invite the first record.
 
+The admin-only analytics sheet at `Views/Analytics/Index.cshtml` uses the same rules and restrained colors: one reconciled gross-sales figure (net + IGV), a visibly qualified cost-coverage section, then an accessible weekly/monthly bar list and tabular rankings. Date filters are close to the figures. Current stock and workshop states are explicitly separated from period-filtered sales. No fabricated values or decorative charts.
+
 ## Do's and Don'ts
 
 - Do describe only implemented modules and indicate accounts awaiting permissions.
 - Do use meaningful customer/provider names instead of IDs in UI choices.
-- Don't present manual quotation totals as calculated tax-inclusive amounts.
+- Don't present estimated profit when costs are missing as a complete or accounting-grade margin.
 - Don't fabricate sales figures, inventory alerts or order states.

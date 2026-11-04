@@ -1,25 +1,31 @@
 @model ProyectoFinal.Models.Cotizacion
+@inject ProyectoFinal.Services.IMenuAccessService MenuAccess
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
-    ViewData["Title"] = $"Cotización #{Model.IdCotizacion}";
+    ViewData["Title"] = $"Cotización {Model.NumeroInterno}";
     var subtotal = Model.DetalleCotizacions.Sum(linea => decimal.Round((linea.Cantidad ?? 0) * (linea.PrecioUnitario ?? 0), 2, MidpointRounding.AwayFromZero));
     var igv = decimal.Round(subtotal * 0.18m, 2, MidpointRounding.AwayFromZero);
     var culture = System.Globalization.CultureInfo.GetCultureInfo("es-PE");
+    var canEdit = await MenuAccess.HasPermissionAsync(User, "cotizaciones", ProyectoFinal.Services.MenuPermissionKind.Edit);
+    var canDelete = await MenuAccess.HasPermissionAsync(User, "cotizaciones", ProyectoFinal.Services.MenuPermissionKind.Delete);
+    var canConfirmSale = await MenuAccess.HasPermissionAsync(User, "ventas", ProyectoFinal.Services.MenuPermissionKind.Process);
 }
 
 <div class="page-heading-row">
-    <div><h1>Cotización #@Model.IdCotizacion</h1><p class="intro">Resumen de cabecera y detalle guardados.</p></div>
-    <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.IdCotizacion">Editar cotización</a>
+    <div><h1>Cotización @Model.NumeroInterno</h1><p class="intro">Resumen de cabecera y detalle guardados.</p></div>
+    @if (canEdit && Model.Estado == "Emitida") { <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.IdCotizacion">Editar cotización</a> }
 </div>
 
 <div class="quote-layout quote-readonly-layout">
     <section class="quote-card quote-header-card" aria-labelledby="quote-header-heading">
-        <div class="quote-card-heading"><div><h2 id="quote-header-heading">Cabecera</h2><p>Cliente y condiciones</p></div><span class="folio">FOLIO #@Model.IdCotizacion</span></div>
+        <div class="quote-card-heading"><div><h2 id="quote-header-heading">Cabecera</h2><p>Cliente y condiciones</p></div><span class="folio">@Model.NumeroInterno</span></div>
         <dl class="quote-audit quote-detail-audit">
-            <div><dt>Cliente</dt><dd>@(Model.IdClienteNavigation?.Nombre ?? "Sin cliente")</dd></div>
+            <div><dt>Cliente</dt><dd>@(Model.ClienteNombreEmision ?? Model.IdClienteNavigation?.Nombre ?? "Sin cliente")</dd></div>
             <div><dt>Fecha de emisión</dt><dd>@(Model.FechaCreacion?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
             <div><dt>Vigencia hasta</dt><dd>@(Model.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "Sin vencimiento")</dd></div>
             <div><dt>Responsable</dt><dd>@(Model.IdUsuarioNavigation?.Email ?? "Usuario no disponible")</dd></div>
+            <div><dt>Estado</dt><dd>@Model.Estado</dd></div>
+            @if (Model.IdCotizacionOrigen is { } origen) { <div><dt>Revalidada desde</dt><dd><a asp-action="Details" asp-route-id="@origen">Cotización #@origen</a></dd></div> }
         </dl>
         <div class="quote-description"><h3>Descripción del trabajo</h3><p>@(string.IsNullOrWhiteSpace(Model.DetalleCotizacion) ? "Sin indicaciones adicionales." : Model.DetalleCotizacion)</p></div>
     </section>
@@ -37,7 +43,7 @@
                 {
                     var lineTotal = decimal.Round((line.Cantidad ?? 0) * (line.PrecioUnitario ?? 0), 2, MidpointRounding.AwayFromZero);
                     <article class="quote-saved-line">
-                        <div><strong>@(line.IdProductoNavigation?.Nombre ?? "Producto no disponible")</strong><span>@(line.Cantidad ?? 0) × @((line.PrecioUnitario ?? 0).ToString("C2", culture))</span></div>
+                        <div><strong>@(line.IdProductoNavigation is { EsServicio: true } ? "Servicio" : "Artículo") · @(line.ProductoNombreEmision ?? line.IdProductoNavigation?.Nombre ?? "Producto no disponible")</strong><span>@(line.Cantidad ?? 0) × @((line.PrecioUnitario ?? 0).ToString("C2", culture))</span></div>
                         <strong>@lineTotal.ToString("C2", culture)</strong>
                     </article>
                 }
@@ -53,5 +59,15 @@
 
 <div class="page-actions">
     <a class="btn btn-outline-secondary" asp-action="Index">Volver a cotizaciones</a>
-    <a class="btn btn-outline-danger" asp-action="Delete" asp-route-id="@Model.IdCotizacion">Eliminar</a>
+    <a class="btn btn-outline-primary" asp-action="Imprimir" asp-route-id="@Model.IdCotizacion" target="_blank" rel="noopener">Imprimir cotización</a>
+    @if (await MenuAccess.HasPermissionAsync(User, "cotizaciones", ProyectoFinal.Services.MenuPermissionKind.Create) && Model.Estado == "Vencida")
+    { <a class="btn btn-primary" asp-action="Revalidar" asp-route-id="@Model.IdCotizacion">Revisar y emitir nueva</a> }
+    @if (canDelete && Model.Estado == "Emitida") { <a class="btn btn-outline-danger" asp-action="Delete" asp-route-id="@Model.IdCotizacion">Eliminar</a> }
+    @if (canConfirmSale && Model.Estado == "Emitida")
+    {
+        <form asp-controller="Ventas" asp-action="ConfirmarDesdeCotizacion" method="post" onsubmit="return confirm('¿Confirmar esta venta, descontar el stock y crear el trabajo en cola?');">
+            <input type="hidden" name="cotizacionId" value="@Model.IdCotizacion" />
+            <button class="btn btn-primary" type="submit">Confirmar venta y crear trabajo</button>
+        </form>
+    }
 </div>

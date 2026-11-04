@@ -1,0 +1,28 @@
+@using System.Globalization
+@model ProyectoFinal.Models.ConteoViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = $"Conteo #{Model.IdCorte}";
+    var peru = CultureInfo.GetCultureInfo("es-PE");
+}
+<h1>@(Model.Apertura ? "Conteo de apertura" : "Corte físico") #@Model.IdCorte</h1>
+<p class="intro">Almacén principal · las ventas están pausadas. Registra la cantidad físicamente disponible de cada artículo, incluso cero.</p>
+<div class="assistant-privacy" role="note"><strong>Revisión antes de aplicar</strong><p>@(Model.Apertura ? "El stock antiguo es solo una referencia histórica: el saldo nuevo saldrá exclusivamente de este conteo. Excluye unidades comprometidas para ventas anteriores que aún estén en el taller." : "Las diferencias con el saldo del sistema se aplicarán como ajustes de inventario.") Guarda primero las cifras y revísalas antes de aprobar. Anular reanuda ventas sin cambiar saldos.</p></div>
+<form asp-action="Guardar" asp-route-id="@Model.IdCorte" method="post" class="inventory-stage">
+    <input type="hidden" asp-for="IdCorte" />
+    <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Artículo</th>@if (!Model.Apertura) { <th scope="col" class="text-end">Saldo al iniciar</th> }<th scope="col">Conteo físico (unidades)</th></tr></thead><tbody>
+    @for (var i = 0; i < Model.Articulos.Count; i++)
+    {
+        <tr><th scope="row">@Model.Articulos[i].Nombre<input type="hidden" asp-for="Articulos[i].IdProducto" /></th>
+            @if (!Model.Apertura) { <td class="text-end">@Model.Articulos[i].CantidadSistemaBase?.ToString("0.###", peru)</td> }
+            <td><label class="visually-hidden" for="Articulos_@(i)__CantidadContadaBase">Cantidad contada para @Model.Articulos[i].Nombre</label><input asp-for="Articulos[i].CantidadContadaBase" type="number" min="0" step="0.001" class="form-control inventory-count-input" placeholder="Sin contar" /><span asp-validation-for="Articulos[i].CantidadContadaBase" class="text-danger"></span></td>
+        </tr>
+    }
+    </tbody></table></div>
+    <button class="btn btn-primary" type="submit">Guardar cantidades sin aplicar</button>
+</form>
+<div class="inventory-count-actions">
+    <form asp-action="Aprobar" asp-route-id="@Model.IdCorte" method="post"><button class="btn btn-outline-primary" type="submit">@(Model.Apertura ? "Aprobar apertura y activar inventario" : "Aprobar corte y aplicar diferencias")</button></form>
+    <form asp-action="Anular" asp-route-id="@Model.IdCorte" method="post"><button class="btn btn-outline-secondary" type="submit">Anular conteo y reanudar ventas</button></form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

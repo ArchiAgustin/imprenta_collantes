@@ -33,6 +33,23 @@ public partial class Cliente
     [StringLength(20)]
     public string? Dni { get; set; }
 
+    [Column("idDocumentoIdentidadTipo")]
+    public int? IdDocumentoIdentidadTipo { get; set; }
+
+    [Column("numeroDocumento")]
+    [StringLength(11)]
+    public string? NumeroDocumento { get; set; }
+
+    [Column("ubigeo", TypeName = "char(6)")]
+    [StringLength(6)]
+    public string? UbigeoCodigo { get; set; }
+
+    [ForeignKey(nameof(IdDocumentoIdentidadTipo))]
+    public DocumentoIdentidadTipo? DocumentoIdentidadTipo { get; set; }
+
+    [ForeignKey(nameof(UbigeoCodigo))]
+    public Ubigeo? Ubigeo { get; set; }
+
     [InverseProperty("IdClienteNavigation")]
     public virtual ICollection<Cotizacion> Cotizacions { get; set; } = new List<Cotizacion>();
 

@@ -1,0 +1,44 @@
+@model ProyectoFinal.Models.PermisosRolViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = $"Permisos de {Model.RolNombre}";
+    var labels = new[] { "Ver", "Crear", "Editar", "Eliminar", "Procesar" };
+}
+
+<div class="page-heading-row">
+    <div><h1>Permisos: @Model.RolNombre</h1><p class="intro">Los menús sin permiso de lectura no aparecerán en el panel.</p></div>
+</div>
+
+<form asp-action="Editar" asp-route-id="@Model.RolId" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="RolId" />
+    <input type="hidden" asp-for="RolNombre" />
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th scope="col">Menú</th>@foreach (var label in labels) { <th scope="col" class="text-center">@label</th> }</tr></thead>
+            <tbody>
+            @for (var index = 0; index < Model.Menus.Count; index++)
+            {
+                <tr>
+                    <th scope="row">
+                        @Model.Menus[index].Nombre
+                        <input type="hidden" asp-for="Menus[index].MenuId" />
+                        <input type="hidden" asp-for="Menus[index].Codigo" />
+                        <input type="hidden" asp-for="Menus[index].Nombre" />
+                        <input type="hidden" asp-for="Menus[index].ControllerNombre" />
+                    </th>
+                    <td class="text-center"><input asp-for="Menus[index].PuedeVer" aria-label="Ver @Model.Menus[index].Nombre" /></td>
+                    <td class="text-center"><input asp-for="Menus[index].PuedeCrear" aria-label="Crear en @Model.Menus[index].Nombre" /></td>
+                    <td class="text-center"><input asp-for="Menus[index].PuedeEditar" aria-label="Editar en @Model.Menus[index].Nombre" /></td>
+                    <td class="text-center"><input asp-for="Menus[index].PuedeEliminar" aria-label="Eliminar en @Model.Menus[index].Nombre" /></td>
+                    <td class="text-center"><input asp-for="Menus[index].PuedeProcesar" aria-label="Procesar en @Model.Menus[index].Nombre" /></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="page-actions">
+        <button class="btn btn-primary" type="submit">Guardar permisos</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+    </div>
+</form>

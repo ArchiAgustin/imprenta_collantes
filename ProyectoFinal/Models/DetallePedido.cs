@@ -25,6 +25,13 @@ public partial class DetallePedido
     [Column("precioUnitario", TypeName = "decimal(10, 2)")]
     public decimal? PrecioUnitario { get; set; }
 
+    [Column("productoNombre")]
+    [StringLength(100)]
+    public string? ProductoNombre { get; set; }
+
+    [Column("esServicio")]
+    public bool EsServicio { get; set; }
+
     [ForeignKey("IdPedido")]
     [InverseProperty("DetallePedidos")]
     public virtual Pedido? IdPedidoNavigation { get; set; }

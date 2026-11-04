@@ -26,13 +26,16 @@ public partial class Pedido
 
     [Column("estadoPedido")]
     [StringLength(50)]
-    public string? EstadoPedido { get; set; }
+    public string? EstadoPedido { get; set; } = ProyectoFinal.Models.EstadoPedido.EnCola;
 
     [Column("total", TypeName = "decimal(10, 2)")]
     public decimal? Total { get; set; }
 
     [Column("idCotizacion")]
     public int? IdCotizacion { get; set; }
+
+    [Column("idVenta")]
+    public int? IdVenta { get; set; }
 
     [InverseProperty("IdPedidoNavigation")]
     public virtual ICollection<DetallePedido> DetallePedidos { get; set; } = new List<DetallePedido>();
@@ -44,6 +47,9 @@ public partial class Pedido
     [ForeignKey("IdCotizacion")]
     [InverseProperty("Pedidos")]
     public virtual Cotizacion? IdCotizacionNavigation { get; set; }
+
+    [ForeignKey("IdVenta")]
+    public virtual Venta? IdVentaNavigation { get; set; }
 
     [ForeignKey("IdUsuario")]
     public virtual IdentityUser? IdUsuarioNavigation { get; set; }
