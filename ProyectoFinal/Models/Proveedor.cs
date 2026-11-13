@@ -25,6 +25,16 @@ public partial class Proveedor
     [StringLength(11)]
     public string? Ruc { get; set; }
 
+    [Column("idDocumentoIdentidadTipo")]
+    public int? IdDocumentoIdentidadTipo { get; set; }
+
+    [Column("numeroDocumento")]
+    [StringLength(20)]
+    public string? NumeroDocumento { get; set; }
+
+    [ForeignKey(nameof(IdDocumentoIdentidadTipo))]
+    public DocumentoIdentidadTipo? DocumentoIdentidadTipo { get; set; }
+
     [Column("direccion")]
     [StringLength(255)]
     public string? Direccion { get; set; }

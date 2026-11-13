@@ -24,6 +24,57 @@
         jQuery.validator.unobtrusive.parse($form);
     }
 
+    function presentationLabel(row) {
+        const product = row.querySelector('.quote-product-select')?.selectedOptions[0];
+        const presentation = row.querySelector('.quote-presentation-select')?.selectedOptions[0];
+        if (!product?.value) return 'presentación';
+        if (product.dataset.esServicio === 'true') return 'servicio';
+        return presentation?.value ? presentation.dataset.label || 'presentación'
+            : product.dataset.baseUnit || 'unidad base';
+    }
+
+    function syncPresentations(row, chooseDefault = false) {
+        const productSelect = row.querySelector('.quote-product-select');
+        const presentationSelect = row.querySelector('.quote-presentation-select');
+        if (!productSelect || !presentationSelect) return;
+        const product = productSelect.selectedOptions[0];
+        const productId = productSelect.value;
+        const isService = product?.dataset.esServicio === 'true';
+        const options = Array.from(presentationSelect.options);
+        options.forEach(option => {
+            const applies = !option.dataset.productId || option.dataset.productId === productId;
+            option.hidden = !applies;
+            option.disabled = !applies;
+        });
+        presentationSelect.disabled = !productId || isService;
+        if (!productId || isService) {
+            presentationSelect.value = '';
+        } else {
+            const current = options.find(option => option.value === presentationSelect.value && !option.disabled);
+            if (chooseDefault || !current) {
+                const base = options.find(option => !option.disabled && option.dataset.productId === productId
+                    && option.dataset.isBase === 'true')
+                    || options.find(option => !option.disabled && option.dataset.productId === productId
+                        && Number(option.dataset.factor) === 1);
+                presentationSelect.value = base?.value ?? '';
+            }
+        }
+        const label = isService ? 'servicio' : presentationLabel(row);
+        const quantityLabel = row.querySelector('[data-quantity-label]');
+        const priceLabel = row.querySelector('[data-price-label]');
+        if (quantityLabel) quantityLabel.textContent = `Cantidad (${label})`;
+        if (priceLabel) priceLabel.textContent = `Precio por ${label} sin IGV`;
+    }
+
+    function setCatalogPresentationPrice(row) {
+        const product = row.querySelector('.quote-product-select')?.selectedOptions[0];
+        const price = Number(product?.dataset.unitPrice);
+        const factor = Number(row.querySelector('.quote-presentation-select')?.selectedOptions[0]?.dataset.factor || 1);
+        if (Number.isFinite(price) && Number.isFinite(factor))
+            row.querySelector('.quote-price').value = (price * factor).toFixed(2);
+        syncPresentations(row);
+    }
+
     function renumberLines() {
         const rows = Array.from(lines.querySelectorAll('[data-quote-line]'));
         rows.forEach((row, index) => {
@@ -37,6 +88,7 @@
                     if (value) element.setAttribute(attribute, value.replace(/Lineas\[\d+\]/g, `Lineas[${index}]`).replace(/Lineas_\d+__/g, `Lineas_${index}__`));
                 }
             });
+            syncPresentations(row);
         });
 
         form.dataset.nextIndex = String(rows.length);
@@ -76,7 +128,7 @@
         });
         lines.append(row);
         renumberLines();
-        row.querySelector('select')?.focus();
+        row.querySelector('.quote-product-select')?.focus();
     });
 
     lines.addEventListener('click', (event) => {
@@ -88,11 +140,14 @@
     });
 
     lines.addEventListener('change', (event) => {
-        if (event.target.matches('.quote-product-select')) markAdviceOutdated();
         if (event.target.matches('.quote-product-select')) {
-            const selected = event.target.selectedOptions[0];
-            const price = selected?.dataset.unitPrice;
-            if (price !== undefined) event.target.closest('[data-quote-line]').querySelector('.quote-price').value = Number(price).toFixed(2);
+            markAdviceOutdated();
+            syncPresentations(event.target.closest('[data-quote-line]'), true);
+            setCatalogPresentationPrice(event.target.closest('[data-quote-line]'));
+        }
+        if (event.target.matches('.quote-presentation-select')) {
+            markAdviceOutdated();
+            setCatalogPresentationPrice(event.target.closest('[data-quote-line]'));
         }
         recalculate();
     });

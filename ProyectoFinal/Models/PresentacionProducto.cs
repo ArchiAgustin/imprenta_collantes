@@ -21,6 +21,7 @@ public sealed class PresentacionProducto
     public string Descripcion { get; set; } = string.Empty;
 
     // Number of base units in one presentation; never use UnidadMedida's source factor.
+    [Range(typeof(decimal), "0.001", "999999999.999", ErrorMessage = "El factor debe ser positivo y admite hasta tres decimales.")]
     [Column("factor", TypeName = "decimal(12,3)")]
     public decimal Factor { get; set; }
 

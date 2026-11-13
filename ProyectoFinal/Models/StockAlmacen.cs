@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProyectoFinal.Models;
 
-// Prepared for the later inventory cutover. No row is created from Producto.Stock
-// while existing sales still mutate that legacy field.
+// Operational balance per warehouse and product. Legacy Producto.Stock remains
+// untouched for historical records; physical counts establish each warehouse's stock.
 [Table("Stock")]
 public sealed class StockAlmacen
 {

@@ -32,6 +32,13 @@ public sealed class AnalyticsDashboardViewModel
     public int ListosParaRecojo { get; set; }
     public int Entregados { get; set; }
     public int PedidosCancelados { get; set; }
+    public int ClientesConVentas { get; set; }
+    public int ClientesRecurrentes { get; set; }
+    public decimal PorcentajeClientesRecurrentes => ClientesConVentas == 0
+        ? 0
+        : decimal.Round((decimal)ClientesRecurrentes / ClientesConVentas * 100m, 1);
+    public decimal? TicketMedioRecurrente { get; set; }
+    public decimal? TicketMedioNuevo { get; set; }
     public List<AnalyticsTendencia> Tendencia { get; set; } = new();
     public List<AnalyticsProducto> Productos { get; set; } = new();
     public List<AnalyticsCliente> Clientes { get; set; } = new();
@@ -39,6 +46,7 @@ public sealed class AnalyticsDashboardViewModel
 }
 
 public sealed record AnalyticsTendencia(string Etiqueta, decimal TotalConIgv, int Ventas);
-public sealed record AnalyticsProducto(int IdProducto, string Nombre, int Unidades, decimal TotalConIgv, decimal PorcentajeAcumulado);
-public sealed record AnalyticsCliente(int IdCliente, string Nombre, int Ventas, decimal TotalConIgv, decimal TicketPromedio, string Segmento);
-public sealed record AnalyticsStock(int IdProducto, string Nombre, decimal Existencias);
+public sealed record AnalyticsProducto(int IdProducto, string Nombre, decimal Unidades, decimal TotalConIgv, decimal PorcentajeAcumulado);
+public sealed record AnalyticsCliente(int IdCliente, string Nombre, int Ventas, decimal TotalConIgv, decimal TicketPromedio, string Segmento,
+    bool Recurrente, DateOnly? UltimaCompra, int? DiasDesdeUltimaCompra, decimal? FrecuenciaMediaDias);
+public sealed record AnalyticsStock(int IdProducto, string Nombre, decimal Existencias, string? Almacen = null);

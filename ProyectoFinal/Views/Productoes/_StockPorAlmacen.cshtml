@@ -1,0 +1,21 @@
+@model ProyectoFinal.Models.StockPorAlmacenViewModel
+<p class="intro">@Model.ProductoNombre</p>
+@if (!Model.EsServicio) { <p class="auth-footnote">Unidad base: @(Model.UnidadBase ?? "Sin configurar"). Los saldos se expresan en esta unidad.</p> }
+@if (Model.EsServicio)
+{
+    <div class="empty-state"><strong>Este producto es un servicio.</strong><p>No controla existencias por almacén.</p></div>
+}
+else if (Model.Almacenes.Count == 0)
+{
+    <div class="empty-state"><strong>No hay almacenes registrados.</strong></div>
+}
+else
+{
+    <div class="table-responsive"><table class="table align-middle"><thead><tr><th scope="col">Almacén</th><th scope="col">Estado</th><th scope="col" class="text-end">Stock actual (@(Model.UnidadBase ?? "unidad base"))</th></tr></thead><tbody>
+    @foreach (var item in Model.Almacenes)
+    {
+        var stock = !item.CorteInicialAplicado ? "Corte inicial pendiente" : item.CantidadBase?.ToString("0.###") ?? "Sin saldo registrado";
+        <tr><th scope="row">@item.Nombre</th><td>@(item.Activo ? "Activo" : "Inactivo")</td><td class="text-end">@stock</td></tr>
+    }
+    </tbody></table></div>
+}

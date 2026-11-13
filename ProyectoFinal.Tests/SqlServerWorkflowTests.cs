@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Diagnostics;
 using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
@@ -68,7 +69,13 @@ public class SqlServerWorkflowTests
                         SecurityStamp = Guid.NewGuid().ToString()
                     };
                     var client = new Cliente { Nombre = "Cliente prueba SQL" };
-                    var product = new Producto { Nombre = "Material de prueba", Precio = 10m, Stock = 1, CostoUnitarioSinIgv = 4m };
+                    var baseUnitId = await seed.UnidadesMedida.AsNoTracking().Where(item => item.Activo)
+                        .Select(item => item.IdUnidadMedida).FirstAsync();
+                    var product = new Producto
+                    {
+                        Nombre = "Material de prueba", Precio = 10m, Stock = 1,
+                        CostoUnitarioSinIgv = 4m, IdUnidadMedidaBase = baseUnitId
+                    };
                     seed.AddRange(user, client, product);
                     await seed.SaveChangesAsync();
 
@@ -169,7 +176,7 @@ public class SqlServerWorkflowTests
 
             await using (var editContext = new ApplicationDbContext(options))
             {
-                var controller = new ProductoesController(editContext, new InventarioService(editContext));
+                var controller = new ProductoesController(new ProductosCatalogoService(editContext, new InventarioService(editContext)));
                 var staleEdit = await controller.Edit(staleVersion.IdProducto, new Producto
                 {
                     IdProducto = staleVersion.IdProducto,
@@ -185,6 +192,8 @@ public class SqlServerWorkflowTests
 
             int doubleQuoteId;
             int doubleProductId;
+            int packageWarehouseId;
+            int packagePresentationId;
             string doubleUserId;
             await using (var seed = new ApplicationDbContext(options))
             {
@@ -195,8 +204,40 @@ public class SqlServerWorkflowTests
                     SecurityStamp = Guid.NewGuid().ToString()
                 };
                 var client = new Cliente { Nombre = "Cliente conversión simultánea" };
-                var product = new Producto { Nombre = "Última unidad", Precio = 10m, Stock = 1 };
-                seed.AddRange(user, client, product);
+                var unitId = await seed.UnidadesMedida.AsNoTracking().Where(item => item.Activo)
+                    .Select(item => item.IdUnidadMedida).FirstAsync();
+                var warehouse = new Almacen
+                {
+                    Nombre = "Almacén paquetes SQL", Activo = true,
+                    FechaActivacionUtc = DateTimeOffset.UtcNow
+                };
+                var product = new Producto
+                {
+                    Nombre = "Último paquete SQL", Precio = 1m, Stock = 1,
+                    IdUnidadMedidaBase = unitId
+                };
+                seed.AddRange(user, client, product, warehouse);
+                await seed.SaveChangesAsync();
+                seed.PresentacionesProducto.AddRange(
+                    new PresentacionProducto
+                    {
+                        IdProducto = product.IdProducto, IdUnidadMedida = unitId,
+                        Descripcion = "Unidad base SQL", Factor = 1m
+                    },
+                    new PresentacionProducto
+                    {
+                        IdProducto = product.IdProducto, IdUnidadMedida = unitId,
+                        Descripcion = "Paquete de 10 SQL", Factor = 10m
+                    });
+                await seed.SaveChangesAsync();
+                packagePresentationId = await seed.PresentacionesProducto
+                    .Where(item => item.IdProducto == product.IdProducto && item.Factor == 10m)
+                    .Select(item => item.IdPresentacionProducto).SingleAsync();
+                packageWarehouseId = warehouse.IdAlmacen;
+                seed.SaldosAlmacen.Add(new StockAlmacen
+                {
+                    IdAlmacen = packageWarehouseId, IdProducto = product.IdProducto, CantidadBase = 10m
+                });
                 await seed.SaveChangesAsync();
                 var quote = new Cotizacion
                 {
@@ -208,6 +249,10 @@ public class SqlServerWorkflowTests
                 quote.DetalleCotizacions.Add(new DetalleCotizacion
                 {
                     IdProducto = product.IdProducto,
+                    IdPresentacionProducto = packagePresentationId,
+                    FactorPresentacion = 10m,
+                    PresentacionDescripcion = "Paquete de 10 SQL",
+                    UnidadBaseDescripcion = (await seed.UnidadesMedida.FindAsync(unitId))!.Descripcion,
                     Cantidad = 1,
                     PrecioUnitario = 10m
                 });
@@ -222,20 +267,30 @@ public class SqlServerWorkflowTests
                 new[] { new Claim(ClaimTypes.NameIdentifier, doubleUserId) }, "Test"));
             await using var firstSaleContext = new ApplicationDbContext(options);
             await using var secondSaleContext = new ApplicationDbContext(options);
-            var firstSaleTask = new VentaService(firstSaleContext).ConfirmarCotizacionAsync(doubleQuoteId, doubleUserId, doubleActor);
-            var secondSaleTask = new VentaService(secondSaleContext).ConfirmarCotizacionAsync(doubleQuoteId, doubleUserId, doubleActor);
+            var firstSaleTask = new VentaService(firstSaleContext).ConfirmarCotizacionAsync(doubleQuoteId, packageWarehouseId, doubleUserId, doubleActor);
+            var secondSaleTask = new VentaService(secondSaleContext).ConfirmarCotizacionAsync(doubleQuoteId, packageWarehouseId, doubleUserId, doubleActor);
             var doubleResults = await Task.WhenAll(firstSaleTask, secondSaleTask);
             Assert.Single(doubleResults, result => result.Exito);
             await using var check = new ApplicationDbContext(options);
             Assert.Equal("Convertida", (await check.Cotizacion.SingleAsync(item => item.IdCotizacion == doubleQuoteId)).Estado);
             Assert.Single(await check.Venta.Where(item => item.IdCotizacion == doubleQuoteId).ToListAsync());
             Assert.Single(await check.Pedido.Where(item => item.IdCotizacion == doubleQuoteId).ToListAsync());
-            Assert.Equal(0, (await check.Producto.SingleAsync(item => item.IdProducto == doubleProductId)).Stock);
+            Assert.Equal(1, (await check.Producto.SingleAsync(item => item.IdProducto == doubleProductId)).Stock);
+            Assert.Equal(0m, (await check.SaldosAlmacen.FindAsync(packageWarehouseId, doubleProductId))!.CantidadBase);
+            var packageSale = await check.DetalleVenta.SingleAsync(item => item.IdProducto == doubleProductId);
+            Assert.Equal(10m, packageSale.FactorPresentacion);
+            Assert.Equal(1, packageSale.Cantidad);
+            var packageKardex = await check.Kardex.SingleAsync(item => item.IdProducto == doubleProductId);
+            Assert.Equal(10m, packageKardex.CantidadBase);
 
             // Execute the BI projections with the SQL Server provider as well: InMemory
             // does not catch unsupported translations for dates, grouping or cost columns.
             var hoyUtc = DateOnly.FromDateTime(DateTime.UtcNow);
+            var analyticsTimer = Stopwatch.StartNew();
             var analytics = await new AnalyticsService(check).ObtenerAsync(hoyUtc.AddDays(-1), hoyUtc.AddDays(1), 5);
+            analyticsTimer.Stop();
+            Assert.True(analyticsTimer.Elapsed < TimeSpan.FromMilliseconds(1500),
+                $"Analytics SQL projections took {analyticsTimer.Elapsed.TotalMilliseconds:0} ms, exceeding 1.5 seconds for this acceptance fixture.");
             var salesCount = await check.Venta.CountAsync(item => item.Estado == EstadoVenta.Confirmada);
             Assert.Equal(salesCount, analytics.VentasConfirmadas);
             Assert.Equal(salesCount * 11.80m, analytics.VentasConIgv);
@@ -280,7 +335,7 @@ public class SqlServerWorkflowTests
             Assert.Contains("Utilidad estimada parcial", dashboardHtml);
             var inventoryPage = await httpClient.GetAsync("/Inventario");
             Assert.Equal(HttpStatusCode.OK, inventoryPage.StatusCode);
-            Assert.Contains("Apertura pendiente", await inventoryPage.Content.ReadAsStringAsync());
+            Assert.Contains("Apertura inicial", await inventoryPage.Content.ReadAsStringAsync());
 
             var firstClientId = await check.Cliente.Select(item => item.IdCliente).FirstAsync();
             var firstProductId = await check.Producto.Select(item => item.IdProducto).FirstAsync();

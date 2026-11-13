@@ -2,7 +2,9 @@
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     var nuevo = Model.IdSerieDocumentoInterno == 0;
-    ViewData["Title"] = nuevo ? "Nueva serie interna" : $"Configurar serie {Model.Serie}";
+    ViewData["Title"] = nuevo ? "Nueva serie" : $"Configurar serie {Model.Serie}";
+    var tiposSunat = ViewData["TiposComprobanteSunat"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? Array.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+    var isSaleSeries = Model.TipoDocumento == ProyectoFinal.Services.SerieDocumentoInternoService.Venta;
 }
 <h1>@ViewData["Title"]</h1>
 <p class="intro">El próximo correlativo es independiente del ID. No puedes retrocederlo ni reutilizar uno ya emitido.</p>
@@ -10,18 +12,43 @@
     <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
     @if (nuevo)
     {
-        <div class="form-group"><label asp-for="TipoDocumento">Tipo de documento</label><select asp-for="TipoDocumento" class="form-select"><option value="Cotizacion">Cotización</option><option value="Venta">Venta interna</option></select><span asp-validation-for="TipoDocumento" class="text-danger"></span></div>
+        <div class="form-group"><label asp-for="TipoDocumento">Documento interno</label><select asp-for="TipoDocumento" class="form-select" id="TipoDocumento"><option value="Cotizacion">Cotización</option><option value="Venta">Venta interna</option></select><span asp-validation-for="TipoDocumento" class="text-danger"></span></div>
     }
     else
     { <input type="hidden" asp-for="TipoDocumento" /><p><strong>Documento:</strong> @(Model.TipoDocumento == "Cotizacion" ? "Cotización" : "Venta interna")</p> }
     <div class="form-group"><label asp-for="Serie">Serie</label><input asp-for="Serie" class="form-control" maxlength="8" pattern="[A-Z0-9]{1,8}" autocomplete="off" required aria-describedby="ayuda-serie" /><small id="ayuda-serie" class="form-text">De 1 a 8 letras mayúsculas o números. Ejemplo: C001.</small><span asp-validation-for="Serie" class="text-danger"></span></div>
     <div class="form-group"><label asp-for="SiguienteCorrelativo">Próximo correlativo</label><input asp-for="SiguienteCorrelativo" class="form-control" type="number" min="1" max="2147483646" required /><span asp-validation-for="SiguienteCorrelativo" class="text-danger"></span></div>
     <div class="form-group"><label asp-for="Digitos">Dígitos mínimos</label><input asp-for="Digitos" class="form-control" type="number" min="4" max="10" required /><span asp-validation-for="Digitos" class="text-danger"></span></div>
+    <div class="form-group" id="tipo-sunat-group" hidden="@(!isSaleSeries)">
+        <label asp-for="IdTipoComprobanteSunat">Tipo de comprobante SUNAT asociado</label>
+        <select asp-for="IdTipoComprobanteSunat" asp-items="tiposSunat" class="form-select" id="IdTipoComprobanteSunat">
+            <option value="">Selecciona un tipo</option>
+        </select>
+        <small class="form-text">Clasificación de referencia para esta serie interna. No activa emisión electrónica ni envía comprobantes a SUNAT.</small>
+    </div>
     @if (Model.Activa && !nuevo)
     { <input type="hidden" name="Activa" value="false" /><p class="status-note">Esta serie ya está activa. Para reemplazarla, activa otra serie del mismo tipo.</p> }
     else
     { <div class="form-check"><input asp-for="Activa" class="form-check-input" /><label asp-for="Activa" class="form-check-label">Activar esta serie para las próximas emisiones</label></div> }
-    <p class="auth-footnote">Al activarla, la serie activa anterior para este documento pasa a inactiva. Sus documentos conservan su numeración. No se pueden generar comprobantes tributarios desde aquí.</p>
+    <p class="auth-footnote">En cotizaciones el tipo SUNAT no aplica. Al activar una serie, la anterior pasa a inactiva; los documentos conservan su numeración. Esta configuración no emite comprobantes tributarios.</p>
     <div class="page-actions"><button class="btn btn-primary" type="submit">Guardar configuración</button><a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a></div>
 </form>
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const documentType = document.getElementById("TipoDocumento");
+            const group = document.getElementById("tipo-sunat-group");
+            const sunatType = document.getElementById("IdTipoComprobanteSunat");
+            if (!documentType || !group || !sunatType) return;
+            const updateType = () => {
+                const isSale = documentType.value === "Venta";
+                group.hidden = !isSale;
+                sunatType.required = isSale;
+                if (!isSale) sunatType.value = "";
+            };
+            documentType.addEventListener("change", updateType);
+            updateType();
+        })();
+    </script>
+}

@@ -4,9 +4,29 @@
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Detalle de producto";
     var canEdit = await MenuAccess.HasPermissionAsync(User, "productos", ProyectoFinal.Services.MenuPermissionKind.Edit);
+    var warehouses = ViewData["Almacenes"] as IReadOnlyList<ProyectoFinal.Models.Almacen> ?? Array.Empty<ProyectoFinal.Models.Almacen>();
+    var selectedWarehouseId = ViewData["AlmacenSeleccionadoId"] as int?;
+    var warehouseName = ViewData["AlmacenSeleccionadoNombre"] as string;
+    var presentaciones = ViewData["PresentacionesProducto"] as IReadOnlyList<ProyectoFinal.Models.PresentacionProducto> ?? Array.Empty<ProyectoFinal.Models.PresentacionProducto>();
+    var unidades = ViewData["UnidadesMedida"] as IReadOnlyList<ProyectoFinal.Models.UnidadMedida> ?? Array.Empty<ProyectoFinal.Models.UnidadMedida>();
 }
 
 <h1>Detalle de producto</h1>
+@if (User.IsInRole("Admin"))
+{
+    <a class="btn btn-outline-primary" asp-controller="TramosDescuento" asp-action="Index" asp-route-productoId="@Model.IdProducto">Configurar tramos de descuento</a>
+}
+@if (warehouses.Count > 1)
+{
+    <form asp-action="Details" asp-route-id="@Model.IdProducto" method="get" class="product-warehouse-filter">
+        <label for="productWarehouse">Consultar existencias en</label>
+        <select id="productWarehouse" name="almacenId" class="form-select">
+            @foreach (var warehouse in warehouses)
+            { <option value="@warehouse.IdAlmacen" selected="@(warehouse.IdAlmacen == selectedWarehouseId ? "selected" : null)">@warehouse.Nombre</option> }
+        </select>
+        <button class="btn btn-outline-primary" type="submit">Ver saldo</button>
+    </form>
+}
 
 <div>
     <h4>Producto</h4>
@@ -42,11 +62,15 @@
             @(Model.EsServicio ? "Servicio" : "Artículo")
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Stock)
+            @(warehouseName is null ? "Stock" : $"Stock · {warehouseName}")
         </dt>
         <dd class = "col-sm-10">
             @ViewData["StockActual"]
         </dd>
+        @if (!Model.EsServicio)
+        {
+            <dt class="col-sm-2">Unidad base</dt><dd class="col-sm-10">@(Model.UnidadMedidaBase?.Descripcion ?? "Sin configurar")</dd>
+        }
         <dt class = "col-sm-2">
             @Html.DisplayNameFor(model => model.IdProveedorNavigation)
         </dt>
@@ -55,7 +79,56 @@
         </dd>
     </dl>
 </div>
+@if (!Model.EsServicio)
+{
+    <section class="analytics-panel analytics-wide" aria-labelledby="presentaciones-producto">
+        <div class="analytics-section-heading"><div><span class="folio">UNIDADES Y CONVERSIONES</span><h2 id="presentaciones-producto">Presentaciones</h2></div><span class="analytics-section-note">Existencias almacenadas en @((Model.UnidadMedidaBase?.DescripcionCorta ?? Model.UnidadMedidaBase?.Descripcion) ?? "unidad base")</span></div>
+        <p class="auth-footnote">El factor indica cuántas unidades base contiene una presentación. Ejemplo: 1 paquete = 10 pliegos base. Crear o activar una presentación no cambia existencias.</p>
+        @if (presentaciones.Count == 0)
+        {
+            <p class="analytics-empty">Este artículo no tiene presentaciones configuradas.</p>
+        }
+        else
+        {
+            <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Presentación</th><th scope="col">Unidad</th><th scope="col" class="text-end">Unidades base por presentación</th><th scope="col">Estado</th>@if (canEdit) { <th scope="col">Acciones</th> }</tr></thead><tbody>
+            @foreach (var item in presentaciones)
+            {
+                var esBase = item.IdUnidadMedida == Model.IdUnidadMedidaBase && item.Factor == 1m;
+                <tr><th scope="row">@item.Descripcion @(esBase ? "(base)" : "")</th><td>@item.UnidadMedida.Descripcion</td><td class="text-end">@item.Factor.ToString("0.###")</td><td>@(item.Activo ? "Activa" : "Inactiva")</td>
+                @if (canEdit)
+                {
+                    <td>
+                        @if (!esBase)
+                        {
+                            <form asp-action="CambiarEstadoPresentacion" method="post" class="inline-action-form">
+                                <input type="hidden" name="id" value="@Model.IdProducto" />
+                                <input type="hidden" name="presentacionId" value="@item.IdPresentacionProducto" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">@(item.Activo ? "Desactivar" : "Activar")</button>
+                            </form>
+                        }
+                    </td>
+                }
+                </tr>
+            }
+            </tbody></table></div>
+        }
+        @if (canEdit)
+        {
+            <form asp-action="AgregarPresentacion" asp-route-id="@Model.IdProducto" method="post" class="identity-form">
+                <h3>Agregar presentación</h3>
+                <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+                <div class="identity-form-grid">
+                    <div class="form-group"><label for="IdUnidadMedida">Unidad</label><select id="IdUnidadMedida" name="IdUnidadMedida" class="form-select" required><option value="">Selecciona una unidad</option>@foreach (var unidad in unidades) { <option value="@unidad.IdUnidadMedida">@unidad.Descripcion</option> }</select></div>
+                    <div class="form-group"><label for="Descripcion">Nombre de presentación</label><input id="Descripcion" name="Descripcion" class="form-control" maxlength="100" required placeholder="Ej. Paquete de 10" /></div>
+                    <div class="form-group"><label for="Factor">Unidades base por presentación</label><input id="Factor" name="Factor" class="form-control" type="number" min="0.001" max="999999999.999" step="0.001" required /></div>
+                    <div class="form-group"><label for="CodigoBarras">Código de barras <span class="field-optional">(opcional)</span></label><input id="CodigoBarras" name="CodigoBarras" class="form-control" maxlength="100" /></div>
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Agregar presentación</button>
+            </form>
+        }
+    </section>
+}
 <div class="page-actions">
     @if (canEdit) { <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model?.IdProducto">Editar producto</a> }
-    <a class="btn btn-outline-secondary" asp-action="Index">Volver a productos</a>
+    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-almacenId="@selectedWarehouseId">Volver a productos</a>
 </div>

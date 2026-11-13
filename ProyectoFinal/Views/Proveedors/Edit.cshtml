@@ -1,7 +1,7 @@
 @model ProyectoFinal.Models.Proveedor
 @{ Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml"; ViewData["Title"] = "Editar proveedor"; }
 <h1>Editar proveedor</h1>
-<p class="intro">Completa RUC, dirección y ubicación para mantener vigente la ficha del proveedor.</p>
+<p class="intro">Completa documento de identidad, dirección y ubicación para mantener vigente la ficha del proveedor.</p>
 <form asp-action="Edit" method="post" class="identity-form">
     <input type="hidden" asp-for="IdProveedor" />
     <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>

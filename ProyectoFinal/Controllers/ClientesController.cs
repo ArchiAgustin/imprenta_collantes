@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using ProyectoFinal.Data;
 using ProyectoFinal.Models;
 using ProyectoFinal.Services;
 
@@ -15,37 +13,45 @@ namespace ProyectoFinal.Controllers
     [Authorize]
     public class ClientesController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IClientesCatalogoService _catalogo;
         private readonly IdentificacionService _identificacion;
+        private readonly FichaComercialService _fichaComercial;
 
-        public ClientesController(ApplicationDbContext context, IdentificacionService identificacion)
+        public ClientesController(IClientesCatalogoService catalogo, IdentificacionService identificacion, FichaComercialService fichaComercial)
         {
-            _context = context;
+            _catalogo = catalogo;
             _identificacion = identificacion;
+            _fichaComercial = fichaComercial;
         }
 
         // GET: Clientes
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? nombre, string? documento, string? correo, string? telefono, int pagina = 1)
         {
-            return View(await _context.Cliente.AsNoTracking().Include(item => item.DocumentoIdentidadTipo).Include(item => item.Ubigeo).ToListAsync());
+            nombre = NormalizarFiltro(nombre);
+            documento = NormalizarFiltro(documento);
+            correo = NormalizarFiltro(correo);
+            telefono = NormalizarFiltro(telefono);
+            var result = await _catalogo.ListarAsync(nombre, documento, correo, telefono, pagina);
+            ViewBag.NombreFiltro = nombre;
+            ViewBag.DocumentoFiltro = documento;
+            ViewBag.CorreoFiltro = correo;
+            ViewBag.TelefonoFiltro = telefono;
+            ViewBag.Pagina = result.Pagina;
+            ViewBag.Paginas = result.Paginas;
+            ViewBag.TotalClientes = result.Total;
+            return View(result.Items);
         }
 
         // GET: Clientes/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(int? id, int paginaCotizaciones = 1, int paginaPedidos = 1)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var cliente = await _context.Cliente.Include(item => item.DocumentoIdentidadTipo).Include(item => item.Ubigeo)
-                .FirstOrDefaultAsync(m => m.IdCliente == id);
-            if (cliente == null)
-            {
-                return NotFound();
-            }
-
-            return View(cliente);
+            var ficha = await _fichaComercial.ObtenerAsync(id.Value, paginaCotizaciones, paginaPedidos);
+            return ficha is null ? NotFound() : View(ficha);
         }
 
         // GET: Clientes/Create
@@ -65,9 +71,7 @@ namespace ProyectoFinal.Controllers
             var (tipo, _) = await _identificacion.ValidarClienteAsync(cliente, null, ModelState);
             if (ModelState.IsValid)
             {
-                if (tipo?.Codigo == "1") cliente.Dni = cliente.NumeroDocumento;
-                _context.Add(cliente);
-                await _context.SaveChangesAsync();
+                await _catalogo.CrearAsync(cliente, tipo?.Codigo == "1");
                 return RedirectToAction(nameof(Index));
             }
             await _identificacion.CargarCatalogosAsync(this, cliente.UbigeoCodigo);
@@ -82,7 +86,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var cliente = await _context.Cliente.FindAsync(id);
+            var cliente = await _catalogo.ObtenerAsync(id.Value);
             if (cliente == null)
             {
                 return NotFound();
@@ -103,27 +107,18 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var existing = await _context.Cliente.FindAsync(id);
+            var existing = await _catalogo.ObtenerAsync(id);
             if (existing is null) return NotFound();
             var (tipo, _) = await _identificacion.ValidarClienteAsync(cliente, id, ModelState);
             if (ModelState.IsValid)
             {
                 try
                 {
-                    existing.Nombre = cliente.Nombre;
-                    existing.Correo = cliente.Correo;
-                    existing.Telefono = cliente.Telefono;
-                    existing.Direccion = cliente.Direccion;
-                    existing.IdDocumentoIdentidadTipo = cliente.IdDocumentoIdentidadTipo;
-                    existing.NumeroDocumento = cliente.NumeroDocumento;
-                    existing.UbigeoCodigo = cliente.UbigeoCodigo;
-                    // The old DNI column is retained for legacy data; keep it consistent on edit.
-                    existing.Dni = tipo?.Codigo == "1" ? cliente.NumeroDocumento : null;
-                    await _context.SaveChangesAsync();
+                    await _catalogo.ActualizarAsync(id, cliente, tipo?.Codigo == "1");
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
                 {
-                    if (!ClienteExists(cliente.IdCliente))
+                    if (!await _catalogo.ExisteAsync(cliente.IdCliente))
                     {
                         return NotFound();
                     }
@@ -146,8 +141,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var cliente = await _context.Cliente.Include(item => item.DocumentoIdentidadTipo).Include(item => item.Ubigeo)
-                .FirstOrDefaultAsync(m => m.IdCliente == id);
+            var cliente = await _catalogo.ObtenerParaEliminarAsync(id.Value);
             if (cliente == null)
             {
                 return NotFound();
@@ -161,23 +155,17 @@ namespace ProyectoFinal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var cliente = await _context.Cliente.FindAsync(id);
-            if (cliente is null) return NotFound();
-            if (await _context.Cotizacion.AnyAsync(c => c.IdCliente == id) ||
-                await _context.Set<Pedido>().AnyAsync(p => p.IdCliente == id))
+            var outcome = await _catalogo.EliminarAsync(id);
+            if (outcome == ResultadoEliminarCatalogo.NoEncontrado) return NotFound();
+            if (outcome == ResultadoEliminarCatalogo.EnUso)
             {
                 ModelState.AddModelError(string.Empty, "No se puede eliminar un cliente con cotizaciones o pedidos asociados.");
-                return View("Delete", cliente);
+                return View("Delete", await _catalogo.ObtenerParaEliminarAsync(id));
             }
-            _context.Cliente.Remove(cliente);
-
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ClienteExists(int id)
-        {
-            return _context.Cliente.Any(e => e.IdCliente == id);
-        }
+        private static string? NormalizarFiltro(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

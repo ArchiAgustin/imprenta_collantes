@@ -8,17 +8,47 @@ namespace ProyectoFinal.Services;
 
 public sealed record ResultadoVenta(bool Exito, string Mensaje, int? IdVenta = null);
 
-public sealed class VentaService(ApplicationDbContext context)
+public sealed class VentaService(ApplicationDbContext context) : IVentaService
 {
-    public async Task<ResultadoVenta> ConfirmarCotizacionAsync(int cotizacionId, string userId, System.Security.Claims.ClaimsPrincipal user)
+    public async Task<IReadOnlyList<Venta>> ListarAsync() => await context.Venta.AsNoTracking()
+        .Include(item => item.Cliente)
+        .Include(item => item.Pedido)
+        .OrderByDescending(item => item.FechaVentaUtc)
+        .ToListAsync();
+
+    public Task<Venta?> ObtenerDetalleAsync(int id) => context.Venta.AsNoTracking()
+        .Include(item => item.Cliente)
+        .Include(item => item.Cotizacion)
+        .Include(item => item.Pedido)
+        .Include(item => item.Almacen)
+        .Include(item => item.Detalles)
+        .FirstOrDefaultAsync(item => item.IdVenta == id);
+
+    public Task<Venta?> ObtenerParaImprimirAsync(int id) => context.Venta.AsNoTracking()
+        .Include(item => item.Detalles)
+        .FirstOrDefaultAsync(item => item.IdVenta == id);
+
+    public Task<ResultadoVenta> ConfirmarCotizacionAsync(int cotizacionId, string userId, System.Security.Claims.ClaimsPrincipal user) =>
+        ConfirmarCotizacionAsyncCore(cotizacionId, null, userId, user);
+
+    public Task<ResultadoVenta> ConfirmarCotizacionAsync(int cotizacionId, int idAlmacen, string userId, System.Security.Claims.ClaimsPrincipal user) =>
+        ConfirmarCotizacionAsyncCore(cotizacionId, idAlmacen, userId, user);
+
+    private async Task<ResultadoVenta> ConfirmarCotizacionAsyncCore(int cotizacionId, int? idAlmacen, string userId, System.Security.Claims.ClaimsPrincipal user)
     {
         await using var transaction = context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted)
             : null;
 
-        var almacen = await new InventarioService(context).BloquearPrincipalAsync();
-        if (almacen?.ConteoEnCurso == true)
-            return await FailAsync(transaction, "Hay un conteo físico en curso. Las ventas están pausadas hasta aprobarlo o anularlo.");
+        var inventario = new InventarioService(context);
+        var almacen = idAlmacen is { } requestedWarehouse
+            ? await inventario.BloquearAlmacenAsync(requestedWarehouse)
+            : await inventario.BloquearPrincipalAsync();
+        // Preserve the historical no-warehouse entry point for legacy/test workflows.
+        if (idAlmacen is null && almacen?.FechaActivacionUtc is null)
+            almacen = null;
+        if (idAlmacen is not null && almacen is null)
+            return await FailAsync(transaction, "Selecciona un almacén activo para confirmar la venta.");
         var inventarioActivo = almacen?.FechaActivacionUtc is not null;
 
         var today = FechaComercial.HoyPeru();
@@ -87,9 +117,12 @@ public sealed class VentaService(ApplicationDbContext context)
         if (products.Count != productIds.Length)
             return await FailAsync(transaction, "Uno de los productos de la cotización ya no existe.");
 
+        if (quote.DetalleCotizacions.Any(line => line.FactorPresentacion <= 0m
+            || decimal.Round(line.FactorPresentacion, 3) != line.FactorPresentacion))
+            return await FailAsync(transaction, "La cotización contiene una presentación o factor inválido.");
         var quantitiesByProduct = quote.DetalleCotizacions
             .GroupBy(line => line.IdProducto!.Value)
-            .ToDictionary(group => group.Key, group => group.Sum(line => line.Cantidad ?? 0));
+            .ToDictionary(group => group.Key, group => group.Sum(line => (line.Cantidad ?? 0) * line.FactorPresentacion));
         var saldos = inventarioActivo
             ? await context.SaldosAlmacen.AsNoTracking()
                 .Where(item => item.IdAlmacen == almacen!.IdAlmacen && productIds.Contains(item.IdProducto))
@@ -100,18 +133,21 @@ public sealed class VentaService(ApplicationDbContext context)
             if (line.Cantidad is null or <= 0 || line.PrecioUnitario is null or < 0)
                 return await FailAsync(transaction, "La cotización contiene cantidades o precios inválidos.");
             var product = products[line.IdProducto!.Value];
-            var floor = SugerenciaPrecioService.CalcularMinimo(product.CostoUnitarioSinIgv);
+            var floor = SugerenciaPrecioService.CalcularMinimo(product.CostoUnitarioSinIgv is { } cost
+                ? cost * line.FactorPresentacion : null);
             if (floor is { } minimum && line.PrecioUnitario < minimum)
                 return await FailAsync(transaction,
-                    $"El costo de «{product.Nombre}» exige al menos {minimum.ToString("C2", CultureInfo.GetCultureInfo("es-PE"))} por unidad sin IGV para conservar el margen mínimo del 10 %. Revisa la cotización antes de confirmar la venta.");
+                    $"El costo de «{product.Nombre}» exige al menos {minimum.ToString("C2", CultureInfo.GetCultureInfo("es-PE"))} por presentación sin IGV para conservar el margen mínimo del 10 %. Revisa la cotización antes de confirmar la venta.");
         }
 
         foreach (var (productId, quantity) in quantitiesByProduct)
         {
             var product = products[productId];
+            if (!inventarioActivo && (quantity != decimal.Truncate(quantity) || quantity > int.MaxValue))
+                return await FailAsync(transaction, $"La cantidad base de «{product.Nombre}» no cabe en el stock heredado entero. Activa inventario por almacén antes de confirmar esta venta.");
             if (!product.EsServicio && inventarioActivo &&
                 (!saldos.TryGetValue(productId, out var saldo) || saldo.CantidadBase < quantity))
-                return await FailAsync(transaction, $"Stock insuficiente para «{product.Nombre}» en el Almacén principal. La cotización se conserva sin cambios.");
+                return await FailAsync(transaction, $"Stock insuficiente para «{product.Nombre}» en «{almacen!.Nombre}». La cotización se conserva sin cambios.");
             if (!product.EsServicio && !inventarioActivo && (product.Stock ?? 0) < quantity)
                 return await FailAsync(transaction, $"Stock insuficiente para «{product.Nombre}». La cotización se conserva sin cambios.");
         }
@@ -145,10 +181,11 @@ public sealed class VentaService(ApplicationDbContext context)
 
             if (context.Database.IsRelational())
             {
+                var legacyQuantity = decimal.ToInt32(quantity);
                 var updated = await context.Producto
                     .Where(item => item.IdProducto == productId && !item.EsServicio
                         && item.Stock != null && item.Stock >= quantity && item.RowVersion == product.RowVersion)
-                    .ExecuteUpdateAsync(update => update.SetProperty(item => item.Stock, item => item.Stock - quantity));
+                    .ExecuteUpdateAsync(update => update.SetProperty(item => item.Stock, item => item.Stock - legacyQuantity));
                 if (updated != 1)
                     return await FailAsync(transaction, $"El stock o el costo de «{product.Nombre}» cambió durante la confirmación. Inténtalo nuevamente.");
             }
@@ -157,7 +194,7 @@ public sealed class VentaService(ApplicationDbContext context)
                 var trackedProduct = await context.Producto.FindAsync(productId);
                 if (trackedProduct is null || trackedProduct.EsServicio || (trackedProduct.Stock ?? 0) < quantity)
                     return await FailAsync(transaction, $"Stock insuficiente para «{product.Nombre}». La cotización se conserva sin cambios.");
-                trackedProduct.Stock = (trackedProduct.Stock ?? 0) - quantity;
+                trackedProduct.Stock = (trackedProduct.Stock ?? 0) - decimal.ToInt32(quantity);
             }
         }
 
@@ -169,6 +206,8 @@ public sealed class VentaService(ApplicationDbContext context)
         var sale = new Venta
         {
             IdCotizacion = quote.IdCotizacion,
+            IdAlmacen = almacen?.IdAlmacen,
+            AlmacenNombreEmision = almacen?.Nombre,
             IdCliente = quote.IdCliente.Value,
             IdUsuario = userId,
             FechaVentaUtc = DateTimeOffset.UtcNow,
@@ -190,7 +229,11 @@ public sealed class VentaService(ApplicationDbContext context)
                 Cantidad = line.Cantidad!.Value,
                 PrecioUnitario = line.PrecioUnitario!.Value,
                 CostoUnitarioSinIgv = product.CostoUnitarioSinIgv,
-                EsServicio = product.EsServicio
+                EsServicio = product.EsServicio,
+                IdPresentacionProducto = line.IdPresentacionProducto,
+                FactorPresentacion = line.FactorPresentacion,
+                PresentacionDescripcion = line.PresentacionDescripcion,
+                UnidadBaseDescripcion = line.UnidadBaseDescripcion
             });
         }
 
@@ -230,7 +273,11 @@ public sealed class VentaService(ApplicationDbContext context)
                 ProductoNombre = line.ProductoNombre,
                 Cantidad = line.Cantidad,
                 PrecioUnitario = line.PrecioUnitario,
-                EsServicio = line.EsServicio
+                EsServicio = line.EsServicio,
+                IdPresentacionProducto = line.IdPresentacionProducto,
+                FactorPresentacion = line.FactorPresentacion,
+                PresentacionDescripcion = line.PresentacionDescripcion,
+                UnidadBaseDescripcion = line.UnidadBaseDescripcion
             });
         }
 
@@ -241,7 +288,7 @@ public sealed class VentaService(ApplicationDbContext context)
         context.AuditoriaOperacion.AddRange(
             AuditoriaFactory.Crear(user, "Cotizacion", quote.IdCotizacion, "Convertida en venta", "Emitida", "Convertida"),
             AuditoriaFactory.Crear(user, "Venta", sale.IdVenta, "Venta confirmada", null, EstadoVenta.Confirmada,
-                $"Pedido #{order.IdPedido} creado y stock reservado."),
+                 $"Pedido #{order.IdPedido} creado; stock reservado en {almacen?.Nombre ?? "stock histórico"}."),
             AuditoriaFactory.Crear(user, "Pedido", order.IdPedido, "Trabajo creado", null, EstadoPedido.EnCola,
                 $"Asociado a la venta #{sale.IdVenta}."));
         await context.SaveChangesAsync();
@@ -256,10 +303,7 @@ public sealed class VentaService(ApplicationDbContext context)
             ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted)
             : null;
 
-        var almacen = await new InventarioService(context).BloquearPrincipalAsync();
-        if (almacen?.ConteoEnCurso == true)
-            return await FailAsync(transaction, "Hay un conteo físico en curso. Las cancelaciones están pausadas.");
-        var inventarioActivo = almacen?.FechaActivacionUtc is not null;
+        await new InventarioService(context).BloquearInventarioAsync();
 
         var saleQuery = context.Venta
             .Include(item => item.Detalles)
@@ -268,6 +312,12 @@ public sealed class VentaService(ApplicationDbContext context)
             ? await saleQuery.AsNoTracking().FirstOrDefaultAsync(item => item.IdVenta == ventaId)
             : await saleQuery.FirstOrDefaultAsync(item => item.IdVenta == ventaId);
         if (sale is null) return await FailAsync(transaction, "No se encontró la venta.");
+        var almacen = sale.IdAlmacen is { } warehouseId
+            ? await context.Almacenes.AsNoTracking().SingleOrDefaultAsync(item => item.IdAlmacen == warehouseId)
+            : null;
+        if (sale.IdAlmacen is not null && (almacen is null || !almacen.Activo || almacen.FechaActivacionUtc is null))
+            return await FailAsync(transaction, "El almacén asociado a esta venta no está disponible; no se modificó el inventario.");
+        var inventarioActivo = almacen?.FechaActivacionUtc is not null;
         if (sale.Estado != EstadoVenta.Confirmada || sale.Pedido?.EstadoPedido != EstadoPedido.EnCola)
             return await FailAsync(transaction, "Solo se puede cancelar una venta mientras su trabajo siga En cola.");
 
@@ -291,32 +341,32 @@ public sealed class VentaService(ApplicationDbContext context)
         var productQuantities = sale.Detalles
             .Where(line => !line.EsServicio)
             .GroupBy(line => line.IdProducto)
-            .ToDictionary(group => group.Key, group => group.Sum(line => line.Cantidad));
+            .ToDictionary(group => group.Key, group => group.Sum(line => line.Cantidad * line.FactorPresentacion));
 
         foreach (var (productId, quantity) in productQuantities)
         {
-            if (inventarioActivo)
+            if (inventarioActivo && almacen is not null)
             {
                 var saldo = await context.SaldosAlmacen.AsNoTracking()
-                    .FirstOrDefaultAsync(item => item.IdAlmacen == almacen!.IdAlmacen && item.IdProducto == productId);
+                    .FirstOrDefaultAsync(item => item.IdAlmacen == almacen.IdAlmacen && item.IdProducto == productId);
                 if (saldo is null) return await FailAsync(transaction, "No existe saldo del artículo; se revirtió la cancelación.");
                 if (saldo.CantidadBase + quantity > 999_999_999_999_999.999m)
                     return await FailAsync(transaction, "La existencia excedería el límite permitido; se revirtió la cancelación.");
                 if (context.Database.IsRelational())
                 {
                     var updated = await context.SaldosAlmacen
-                        .Where(item => item.IdAlmacen == almacen!.IdAlmacen && item.IdProducto == productId && item.RowVersion == saldo.RowVersion)
+                        .Where(item => item.IdAlmacen == almacen.IdAlmacen && item.IdProducto == productId && item.RowVersion == saldo.RowVersion)
                         .ExecuteUpdateAsync(update => update.SetProperty(item => item.CantidadBase, item => item.CantidadBase + quantity));
                     if (updated != 1) return await FailAsync(transaction, "El saldo cambió durante la cancelación; no se restituyó inventario.");
                 }
                 else
                 {
-                    var tracked = await context.SaldosAlmacen.FindAsync(almacen!.IdAlmacen, productId);
+                    var tracked = await context.SaldosAlmacen.FindAsync(almacen.IdAlmacen, productId);
                     tracked!.CantidadBase += quantity;
                 }
                 context.Kardex.Add(new Kardex
                 {
-                    IdAlmacen = almacen!.IdAlmacen, IdProducto = productId, FechaUtc = DateTimeOffset.UtcNow,
+                    IdAlmacen = almacen.IdAlmacen, IdProducto = productId, FechaUtc = DateTimeOffset.UtcNow,
                     TipoMovimiento = "Devolución", CantidadBase = quantity,
                     SaldoAnteriorBase = saldo.CantidadBase, SaldoPosteriorBase = saldo.CantidadBase + quantity,
                     TipoReferencia = "Venta", IdReferencia = sale.IdVenta,
@@ -324,11 +374,14 @@ public sealed class VentaService(ApplicationDbContext context)
                 });
                 continue;
             }
+            if (quantity != decimal.Truncate(quantity) || quantity > int.MaxValue)
+                return await FailAsync(transaction, "La devolución no cabe en el stock heredado entero; activa inventario por almacén para esa presentación.");
+            var legacyQuantity = decimal.ToInt32(quantity);
             if (context.Database.IsRelational())
             {
                 var updated = await context.Producto
                     .Where(item => item.IdProducto == productId)
-                    .ExecuteUpdateAsync(update => update.SetProperty(item => item.Stock, item => (item.Stock ?? 0) + quantity));
+                    .ExecuteUpdateAsync(update => update.SetProperty(item => item.Stock, item => (item.Stock ?? 0) + legacyQuantity));
                 if (updated != 1)
                     return await FailAsync(transaction, "No se pudo restituir el inventario; la cancelación fue revertida.");
             }
@@ -337,7 +390,7 @@ public sealed class VentaService(ApplicationDbContext context)
                 var product = await context.Producto.FindAsync(productId);
                 if (product is null)
                     return await FailAsync(transaction, "No se pudo restituir el inventario; la cancelación fue revertida.");
-                product.Stock = (product.Stock ?? 0) + quantity;
+                product.Stock = (product.Stock ?? 0) + legacyQuantity;
             }
         }
 

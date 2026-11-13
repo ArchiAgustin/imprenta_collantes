@@ -26,12 +26,12 @@ public class InventarioSqlTests
         try
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(testString).Options;
-            int productId, zeroProductId, quoteId, clientId;
+            int productId, zeroProductId, quoteId, clientId, warehouseId;
             string userId;
             await using (var seed = new ApplicationDbContext(options))
             {
                 await seed.Database.MigrateAsync();
-                Assert.Single(await seed.Almacenes.ToListAsync());
+                warehouseId = (await seed.Almacenes.SingleAsync()).IdAlmacen;
                 Assert.Empty(await seed.SaldosAlmacen.ToListAsync());
                 var unit = await seed.UnidadesMedida.SingleAsync();
                 var user = new IdentityUser { Id = Guid.NewGuid().ToString(), UserName = "inventario-" + Guid.NewGuid().ToString("N"), SecurityStamp = Guid.NewGuid().ToString() };
@@ -56,18 +56,21 @@ public class InventarioSqlTests
             }
 
             var actor = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, userId) }, "Test"));
-            int cutId;
+            int inventoryId;
             await using (var db = new ApplicationDbContext(options))
             {
                 var inventory = new InventarioService(db);
-                var started = await inventory.IniciarConteoAsync(userId);
-                Assert.True(started.Exito, started.Mensaje);
-                cutId = started.IdCorte!.Value;
-                Assert.False((await new VentaService(db).ConfirmarCotizacionAsync(quoteId, userId, actor)).Exito);
-                Assert.False((await inventory.FinalizarConteoAsync(cutId, userId, true)).Exito);
-                Assert.True((await inventory.GuardarConteoAsync(cutId, new[] { new ConteoLineaInput(productId, 3), new ConteoLineaInput(zeroProductId, 0) })).Exito);
-                Assert.True((await inventory.FinalizarConteoAsync(cutId, userId, true)).Exito);
-                Assert.False((await inventory.FinalizarConteoAsync(cutId, userId, true)).Exito);
+                var applied = await inventory.CrearInventarioAsync(warehouseId, DateOnly.FromDateTime(DateTime.UtcNow),
+                    new[] { new InventarioLineaInput(productId, 3), new InventarioLineaInput(zeroProductId, 0) }, userId, actor);
+                Assert.True(applied.Exito, applied.Mensaje);
+                inventoryId = applied.IdInventario!.Value;
+                var header = await db.Inventarios.Include(item => item.Almacen).Include(item => item.Detalles)
+                    .ThenInclude(item => item.Producto).SingleAsync(item => item.IdInventario == inventoryId);
+                Assert.Equal("INV1-00000001", header.Numero);
+                Assert.Equal(2, header.Detalles.Count);
+                Assert.Equal("Almacén principal", header.Almacen.Nombre);
+                Assert.Contains(header.Detalles, detail => detail.Producto.IdProducto == productId && detail.CantidadContadaBase == 3m);
+                Assert.False(await db.Almacenes.Where(item => item.IdAlmacen == warehouseId).Select(item => item.ConteoEnCurso).SingleAsync());
             }
             await using (var db = new ApplicationDbContext(options))
             {
@@ -119,12 +122,9 @@ public class InventarioSqlTests
             await using (var db = new ApplicationDbContext(options))
             {
                 var inventory = new InventarioService(db);
-                Assert.True((await inventory.RegistrarEntradaAsync(productId, 1, "Recepción física", userId)).Exito);
-                var cut = await inventory.IniciarConteoAsync(userId);
+                var cut = await inventory.CrearInventarioAsync(warehouseId, DateOnly.FromDateTime(DateTime.UtcNow),
+                    new[] { new InventarioLineaInput(productId, 2), new InventarioLineaInput(zeroProductId, 0) }, userId, actor);
                 Assert.True(cut.Exito, cut.Mensaje);
-                Assert.False((await inventory.RegistrarEntradaAsync(productId, 1, "Durante corte", userId)).Exito);
-                Assert.True((await inventory.GuardarConteoAsync(cut.IdCorte!.Value, new[] { new ConteoLineaInput(productId, 2), new ConteoLineaInput(zeroProductId, 0) })).Exito);
-                Assert.True((await inventory.FinalizarConteoAsync(cut.IdCorte.Value, userId, true)).Exito);
                 Assert.Equal(2m, await db.SaldosAlmacen.Where(s => s.IdProducto == productId).Select(s => s.CantidadBase).SingleAsync());
                 Assert.Equal("Ajuste salida", (await db.Kardex.OrderByDescending(k => k.IdKardex).FirstAsync()).TipoMovimiento);
             }

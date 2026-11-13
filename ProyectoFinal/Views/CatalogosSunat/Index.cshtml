@@ -1,0 +1,24 @@
+@model IReadOnlyList<ProyectoFinal.Controllers.CatalogoSunatGrupoViewModel>
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Catálogos SUNAT";
+}
+<div class="page-heading-row">
+    <div><h1>Catálogos SUNAT</h1><p class="intro">Consulta referencias tributarias y comerciales para la operación. Este módulo no emite comprobantes electrónicos.</p></div>
+</div>
+<p class="auth-footnote">Los códigos y descripciones son referencias de solo lectura. Puedes activar o desactivar filas cuando no estén en uso; cada cambio queda en auditoría.</p>
+@for (var groupIndex = 0; groupIndex < Model.Count; groupIndex++)
+{
+    var group = Model[groupIndex];
+    var headingId = $"sunat-group-{groupIndex}";
+    <section class="sunat-catalog-section" aria-labelledby="@headingId">
+        <h2 id="@headingId">@group.Nombre</h2>
+        <ul class="sunat-catalog-list">
+        @foreach (var item in group.Catalogos)
+        {
+            <li><a asp-controller="CatalogosSunat" asp-action="@item.Accion"><strong>@item.Nombre</strong><span>@item.Descripcion</span></a></li>
+        }
+        </ul>
+    </section>
+}
+<p class="auth-footnote">No incluye errores SUNAT, países, nacionalidades, catálogos laborales, motivos de nota de crédito de percepción ni tablas operativas de validación/envío.</p>

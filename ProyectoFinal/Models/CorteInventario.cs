@@ -21,7 +21,7 @@ public sealed class CorteInventario
 
     [Required, StringLength(20)]
     [Column("estado")]
-    public string Estado { get; set; } = "Borrador";
+    public string Estado { get; set; } = "Aprobado";
 
     [StringLength(450)]
     [Column("idUsuario")]

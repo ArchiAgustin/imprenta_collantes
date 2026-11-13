@@ -1,0 +1,30 @@
+@using System.Globalization
+@model ProyectoFinal.Models.KardexInventarioViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Kárdex reciente";
+    var peru = CultureInfo.GetCultureInfo("es-PE");
+}
+<div class="page-heading-row"><div><h1>Kárdex reciente</h1><p class="intro">Movimientos cronológicos con saldo anterior y posterior por almacén.</p></div><a class="btn btn-outline-secondary" asp-action="Index">Volver a inventario</a></div>
+<form asp-action="Kardex" method="get" class="inventory-warehouse-filter">
+    <label for="almacenId">Filtrar por almacén</label>
+    <select id="almacenId" name="almacenId" class="form-select">
+        <option value="">Todos los almacenes</option>
+        @foreach (var warehouse in Model.Almacenes)
+        { <option value="@warehouse.IdAlmacen" selected="@(warehouse.IdAlmacen == Model.AlmacenSeleccionadoId ? "selected" : null)">@warehouse.Nombre</option> }
+    </select>
+    <button class="btn btn-outline-primary" type="submit">Aplicar filtro</button>
+</form>
+@if (Model.Movimientos.Count == 0)
+{
+    <div class="empty-state" role="status"><strong>No hay movimientos para mostrar.</strong><p>Las entradas, ventas, ajustes y transferencias se registrarán aquí.</p></div>
+}
+else
+{
+    <div class="table-responsive"><table class="table align-middle"><thead><tr><th scope="col">Fecha (Perú)</th><th scope="col">Almacén</th><th scope="col">Artículo</th><th scope="col">Unidad base</th><th scope="col">Movimiento</th><th scope="col" class="text-end">Cantidad</th><th scope="col" class="text-end">Saldo</th><th scope="col">Referencia</th></tr></thead><tbody>
+    @foreach (var item in Model.Movimientos)
+    {
+        <tr><td>@item.FechaUtc.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm")</td><td>@item.Almacen.Nombre</td><th scope="row">@item.Producto.Nombre</th><td>@item.Producto.UnidadMedidaBase?.Descripcion</td><td>@item.TipoMovimiento</td><td class="text-end">@item.CantidadBase.ToString("0.###", peru)</td><td class="text-end">@item.SaldoPosteriorBase.ToString("0.###", peru)</td><td>@(item.TipoReferencia is null ? item.Observaciones : $"{item.TipoReferencia} #{item.IdReferencia}")</td></tr>
+    }
+    </tbody></table></div>
+}

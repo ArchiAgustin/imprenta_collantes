@@ -1,71 +1,384 @@
-@using System.Globalization
-@model ProyectoFinal.Models.InventarioDashboardViewModel
+@model ProyectoFinal.Models.InventarioIndexViewModel
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Inventario";
-    var peru = CultureInfo.GetCultureInfo("es-PE");
 }
 <div class="page-heading-row">
-    <div><h1>Inventario</h1><p class="intro">Almacén principal · existencias en unidad base y movimientos trazables.</p></div>
+    <div><h1>Inventario</h1><p class="intro">Historial de cortes físicos por almacén.</p></div>
+    @if (Model.Almacenes.Count > 0 && Model.ArticulosSinUnidadBase == 0)
+    { <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#nuevoInventarioModal">Nuevo</button> }
+    else if (Model.Almacenes.Count > 0)
+    { <a class="btn btn-outline-primary" asp-controller="Productoes" asp-action="Index">Configurar artículos</a> }
+    else
+    { <a class="btn btn-primary" asp-controller="Almacenes" asp-action="Create">Crear almacén</a> }
 </div>
-
-@if (Model.CorteAbierto is { } abierto)
+@if (Model.ArticulosSinUnidadBase > 0)
 {
-    <section class="inventory-stage" aria-labelledby="inventory-count-title">
-        <h2 id="inventory-count-title">Conteo físico en curso</h2>
-        <p>Ventas, cancelaciones y entradas están pausadas. Registra las cantidades disponibles para vender; no incluyas artículos ya comprometidos para trabajos anteriores.</p>
-        <a class="btn btn-primary" asp-action="Conteo" asp-route-id="@abierto.IdCorteInventario">Continuar conteo #@abierto.IdCorteInventario</a>
-    </section>
+    <div class="validation-summary" role="alert">Hay @Model.ArticulosSinUnidadBase artículo(s) sin unidad base. Configúralos en Productos antes de registrar inventarios; las cantidades se guardan siempre en unidad base.</div>
 }
-else if (!Model.Activo)
+
+@if (Model.Inventarios.Count == 0)
 {
-    <section class="inventory-stage" aria-labelledby="inventory-opening-title">
-        <h2 id="inventory-opening-title">Apertura pendiente</h2>
-        <p>El stock antiguo todavía rige las ventas. Para activar este almacén hay que contar físicamente todos los artículos, incluso los que tengan cero unidades. No se copiarán cantidades antiguas automáticamente.</p>
-        <p>Al iniciar se pausarán ventas y devoluciones hasta que apruebes o anules el conteo. Coordina el momento con el taller.</p>
-        <form asp-action="Iniciar" method="post"><button class="btn btn-primary" type="submit">Iniciar conteo y pausar ventas</button></form>
-    </section>
+    <div class="empty-state" role="status"><strong>Aún no hay inventarios registrados.</strong><p>Usa Nuevo para guardar el primer corte físico de un almacén.</p></div>
 }
 else
 {
-    <section class="inventory-stage" aria-labelledby="inventory-balance-title">
-        <div class="inventory-section-heading"><div><h2 id="inventory-balance-title">Existencias actuales</h2><p>Activado el @Model.FechaActivacionUtc?.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm") (hora peruana).</p></div>
-            <form asp-action="Iniciar" method="post"><button class="btn btn-outline-primary" type="submit">Iniciar corte físico</button></form>
-        </div>
-        @if (Model.Saldos.Count == 0) { <p class="empty-state">Todavía no hay saldos registrados.</p> }
-        else
-        {
-            <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Artículo</th><th scope="col" class="text-end">Unidades disponibles</th></tr></thead><tbody>
-            @foreach (var saldo in Model.Saldos)
-            { <tr><th scope="row">@saldo.Nombre</th><td class="text-end">@saldo.CantidadBase.ToString("0.###", peru)</td></tr> }
-            </tbody></table></div>
-        }
-    </section>
-    <section class="inventory-stage" aria-labelledby="inventory-receipt-title">
-        <h2 id="inventory-receipt-title">Registrar entrada física</h2>
-        <p>Solo para artículos recibidos o incorporados físicamente. La entrada no modifica el costo ni crea una compra histórica.</p>
-        <form asp-action="Entrada" method="post" class="inventory-entry-form">
-            <div class="form-group"><label for="IdProducto">Artículo</label><select id="IdProducto" name="IdProducto" class="form-select" required><option value="">Selecciona un artículo</option>
-            @foreach (var saldo in Model.Saldos) { <option value="@saldo.IdProducto">@saldo.Nombre</option> }
-            </select></div>
-            <div class="form-group"><label for="CantidadBase">Cantidad en unidades</label><input id="CantidadBase" name="CantidadBase" type="number" min="0.001" step="0.001" class="form-control" required /></div>
-            <div class="form-group"><label for="Motivo">Motivo / referencia</label><input id="Motivo" name="Motivo" maxlength="500" class="form-control" required placeholder="Ej. recepción física registrada" /></div>
-            <button class="btn btn-primary" type="submit">Registrar entrada</button>
-        </form>
-    </section>
+    <div class="table-responsive"><table class="table align-middle"><thead><tr><th scope="col">Serie</th><th scope="col">Correlativo</th><th scope="col">Fecha</th><th scope="col">Almacén</th><th scope="col" class="text-end">Productos</th><th scope="col"></th></tr></thead><tbody>
+    @foreach (var item in Model.Inventarios)
+    {
+        <tr><th scope="row" class="folio">@item.Serie</th><td class="folio">@item.Correlativo.ToString("D8")</td><td>@item.Fecha.ToString("dd/MM/yyyy")</td><td>@item.Almacen</td><td class="text-end">@item.Productos</td><td><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.IdInventario">Ver detalle</a></td></tr>
+    }
+    </tbody></table></div>
 }
 
-@if (Model.Cortes.Count > 0)
+@if (Model.Almacenes.Count > 0 && Model.ArticulosSinUnidadBase == 0)
 {
-    <section class="inventory-stage" aria-labelledby="inventory-history-title"><h2 id="inventory-history-title">Cortes</h2>
-    <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Corte</th><th scope="col">Fecha (Perú)</th><th scope="col">Estado</th></tr></thead><tbody>
-    @foreach (var item in Model.Cortes) { <tr><th scope="row">#@item.IdCorteInventario</th><td>@item.FechaUtc.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm")</td><td>@item.Estado</td></tr> }
-    </tbody></table></div></section>
+    <div class="modal fade inventory-modal" id="nuevoInventarioModal" tabindex="-1" aria-labelledby="nuevoInventarioTitulo" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
+            <form asp-action="Crear" method="post" id="nuevoInventarioForm">
+                <div class="modal-header">
+                    <div><h2 class="modal-title" id="nuevoInventarioTitulo">Nuevo inventario</h2></div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                     <p id="inventoryCountNote" class="inventory-cut-note" role="note">Corte físico: solo se reemplaza el stock de los productos agregados; los demás quedan igual. Coordina el conteo con tu equipo.</p>
+                    <div class="row g-4 inventory-create-grid">
+                        <section class="col-lg-4 inventory-header-fields" aria-labelledby="inventario-cabecera">
+                            <h3 id="inventario-cabecera">Cabecera</h3>
+                            <div class="inventory-header-pair">
+                                <div class="form-group"><label for="serieInventario">Serie</label><input id="serieInventario" class="form-control folio" value="@Model.Serie" readonly /></div>
+                                <div class="form-group"><label for="correlativoInventario">Correlativo</label><input id="correlativoInventario" class="form-control folio" value="@Model.Serie-@Model.SiguienteCorrelativo.ToString("D8")" readonly /></div>
+                            </div>
+                            <div class="inventory-header-pair inventory-header-pair-wide">
+                                <div class="form-group"><label for="Fecha">Fecha</label><input id="Fecha" name="Fecha" type="date" class="form-control" value="@Model.FechaHoy.ToString("yyyy-MM-dd")" required /></div>
+                                <div class="form-group"><label for="IdAlmacen">Almacén</label><select id="IdAlmacen" name="IdAlmacen" class="form-select" required>
+                                    <option value="">Seleccionar</option>
+                                    @foreach (var warehouse in Model.Almacenes)
+                                     { <option value="@warehouse.IdAlmacen" data-inicial="@(warehouse.FechaActivacionUtc is null ? "true" : "false")" data-articulos="@Model.TotalArticulos">@warehouse.Nombre@(warehouse.FechaActivacionUtc is null ? " · Apertura inicial" : "")</option> }
+                                </select></div>
+                            </div>
+                            <div id="cambioAlmacenConfirmacion" class="inventory-change-warning" role="alert" hidden>
+                                <p id="cambioAlmacenMensaje"></p>
+                                <div><button id="confirmarCambioAlmacen" type="button" class="btn btn-sm btn-primary">Cambiar y quitar productos</button><button id="cancelarCambioAlmacen" type="button" class="btn btn-sm btn-outline-secondary">Conservar almacén</button></div>
+                            </div>
+                        </section>
+                        <section class="col-lg-8 inventory-product-picker" aria-labelledby="inventario-detalle">
+                            <h3 id="inventario-detalle">Agregar productos</h3>
+                            <div class="inventory-picker-row">
+                                <div class="inventory-picker-search">
+                                    <input id="productoBuscar" class="form-control" type="search" autocomplete="off" placeholder="Selecciona un almacén para buscar productos." aria-label="Producto para agregar al inventario" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="productoResultados" aria-describedby="productoEstadoBusqueda" disabled />
+                                    <div id="productoResultados" class="inventory-autocomplete-results" role="listbox" aria-label="Resultados de productos" hidden></div>
+                                    <p id="productoEstadoBusqueda" class="inventory-search-status" role="status" aria-live="polite" hidden></p>
+                                </div>
+                            </div>
+                            <div class="inventory-detail-list">
+                        <div class="table-responsive"><table class="table align-middle inventory-detail-table"><thead><tr><th scope="col">Producto</th><th scope="col" class="text-end">Stock actual</th><th scope="col">Cantidad física</th><th scope="col"></th></tr></thead><tbody id="inventarioDetalles"><tr id="sinDetalles"><td colspan="4" class="inventory-lines-empty">Aún no agregas productos. Busca un artículo arriba para comenzar.</td></tr></tbody></table></div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button id="guardarInventario" type="submit" class="btn btn-primary" disabled>Guardar inventario</button></div>
+            </form>
+        </div></div>
+    </div>
 }
-@if (Model.Movimientos.Count > 0)
-{
-    <section class="inventory-stage" aria-labelledby="inventory-kardex-title"><h2 id="inventory-kardex-title">Kárdex reciente</h2>
-    <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Fecha (Perú)</th><th scope="col">Artículo</th><th scope="col">Movimiento</th><th scope="col" class="text-end">Cantidad</th><th scope="col" class="text-end">Saldo</th><th scope="col">Referencia</th></tr></thead><tbody>
-    @foreach (var item in Model.Movimientos) { <tr><td>@item.FechaUtc.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm")</td><th scope="row">@item.Producto.Nombre</th><td>@item.TipoMovimiento</td><td class="text-end">@item.CantidadBase.ToString("0.###", peru)</td><td class="text-end">@item.SaldoPosteriorBase.ToString("0.###", peru)</td><td>@(item.TipoReferencia is null ? item.Observaciones : $"{item.TipoReferencia} #{item.IdReferencia}")</td></tr> }
-    </tbody></table></div></section>
+
+@section Scripts {
+    @if (Model.Almacenes.Count > 0 && Model.ArticulosSinUnidadBase == 0)
+    {
+        <script>
+            (() => {
+                const warehouse = document.getElementById("IdAlmacen");
+                const modal = document.getElementById("nuevoInventarioModal");
+                const search = document.getElementById("productoBuscar");
+                const results = document.getElementById("productoResultados");
+                const searchStatus = document.getElementById("productoEstadoBusqueda");
+                const rows = document.getElementById("inventarioDetalles");
+                const saveButton = document.getElementById("guardarInventario");
+                const changeWarning = document.getElementById("cambioAlmacenConfirmacion");
+                const changeMessage = document.getElementById("cambioAlmacenMensaje");
+                const confirmChange = document.getElementById("confirmarCambioAlmacen");
+                const cancelChange = document.getElementById("cancelarCambioAlmacen");
+                const countNote = document.getElementById("inventoryCountNote");
+                if (!warehouse || !modal || !search || !results || !searchStatus || !rows) return;
+
+                const lines = [];
+                let previousWarehouse = "";
+                let pendingWarehouse = null;
+                let searchTimer = null;
+                let requestController = null;
+                let activeResult = -1;
+                let initialCount = false;
+                let expectedArticles = 0;
+
+                const updateCountNote = () => {
+                    const option = warehouse.selectedOptions[0];
+                    initialCount = option?.dataset.inicial === "true";
+                    expectedArticles = Number(option?.dataset.articulos ?? 0);
+                    if (countNote) countNote.textContent = initialCount
+                        ? `Apertura inicial: agrega los ${expectedArticles} artículos y registra la cantidad física de cada uno, incluso cero. Las cantidades se ingresan en unidad base.`
+                        : "Corte físico: solo se reemplaza el stock de los productos agregados; los demás quedan igual. Las cantidades se ingresan en unidad base.";
+                    updateSaveState();
+                };
+
+                const updateSaveState = () => {
+                    const complete = lines.length > 0 && (!initialCount || lines.length === expectedArticles)
+                        && lines.every(line => line.cantidad !== "" && Number.isFinite(Number(line.cantidad)) && Number(line.cantidad) >= 0);
+                    if (saveButton) saveButton.disabled = !complete || !warehouse.value;
+                };
+                const setSearchState = (message, busy = false) => {
+                    searchStatus.textContent = message;
+                    searchStatus.hidden = message.length === 0;
+                    searchStatus.setAttribute("aria-busy", String(busy));
+                };
+                const updateSearchAvailability = () => {
+                    search.disabled = !warehouse.value;
+                    search.placeholder = warehouse.value ? "Nombre del producto" : "Selecciona un almacén para buscar productos.";
+                };
+                const addProduct = product => {
+                    if (lines.some(line => line.id === product.idProducto)) {
+                        setSearchState(`${product.nombre} ya está en este inventario.`);
+                        return;
+                    }
+                    lines.push({ id: product.idProducto, nombre: product.nombre, unidad: product.unidadBase, stock: product.stockActual, cantidad: "" });
+                    renderLines();
+                    search.value = "";
+                    results.replaceChildren();
+                    results.hidden = true;
+                    search.setAttribute("aria-expanded", "false");
+                    setSearchState(`${product.nombre} agregado. Ingresa la cantidad en ${product.unidadBase} en la tabla.`);
+                    rows.querySelectorAll(".inventory-line-quantity")[lines.length - 1]?.focus();
+                };
+                const renderLines = () => {
+                    rows.replaceChildren();
+                    if (lines.length === 0) {
+                        const row = document.createElement("tr");
+                        const cell = document.createElement("td");
+                        cell.colSpan = 4;
+                        cell.className = "inventory-lines-empty";
+                        cell.textContent = "Aún no agregas productos. Busca un artículo arriba para comenzar.";
+                        row.append(cell);
+                        rows.append(row);
+                        updateSaveState();
+                        return;
+                    }
+                    lines.forEach((line, index) => {
+                        const row = document.createElement("tr");
+                        const name = document.createElement("th");
+                        name.scope = "row";
+                        name.textContent = `${line.nombre} (${line.unidad})`;
+                        const id = document.createElement("input");
+                        id.type = "hidden";
+                        id.name = `Detalles[${index}].IdProducto`;
+                        id.value = line.id;
+                        name.append(id);
+                        const stock = document.createElement("td");
+                        stock.className = "text-end inventory-stock-value";
+                        stock.textContent = `${Number(line.stock).toLocaleString("es-PE", { maximumFractionDigits: 3 })} ${line.unidad}`;
+                        const quantityCell = document.createElement("td");
+                        const input = document.createElement("input");
+                        input.type = "number";
+                        input.min = "0";
+                        input.max = "999999999999999.999";
+                        input.step = "0.001";
+                        input.required = true;
+                        input.inputMode = "decimal";
+                        input.className = "form-control form-control-sm inventory-line-quantity";
+                        input.name = `Detalles[${index}].CantidadBase`;
+                        input.value = line.cantidad;
+                        input.setAttribute("aria-label", `Cantidad física de ${line.nombre} en ${line.unidad}`);
+                        input.addEventListener("input", () => { line.cantidad = input.value; updateSaveState(); });
+                        quantityCell.append(input);
+                        const actionCell = document.createElement("td");
+                        const remove = document.createElement("button");
+                        remove.type = "button";
+                        remove.className = "btn btn-sm btn-outline-secondary inventory-remove-line";
+                        remove.textContent = "Quitar";
+                        remove.setAttribute("aria-label", `Quitar ${line.nombre} del inventario`);
+                        remove.addEventListener("click", () => {
+                            lines.splice(index, 1);
+                            renderLines();
+                            search.focus();
+                        });
+                        actionCell.append(remove);
+                        row.append(name, stock, quantityCell, actionCell);
+                        rows.append(row);
+                    });
+                    updateSaveState();
+                };
+                const showProducts = async () => {
+                    requestController?.abort();
+                    results.replaceChildren();
+                    results.hidden = true;
+                    search.setAttribute("aria-expanded", "false");
+                    const term = search.value.trim();
+                    if (!warehouse.value) { setSearchState(""); return; }
+                    if (term.length < 2) { setSearchState("Escribe al menos dos letras para buscar."); return; }
+
+                    const controller = new AbortController();
+                    requestController = controller;
+                    setSearchState("Buscando productos…", true);
+                    const url = new URL('@Url.Action("BuscarProductos", "Inventario")', window.location.origin);
+                    url.searchParams.set("termino", term);
+                    url.searchParams.set("almacenId", warehouse.value);
+                    try {
+                        const response = await fetch(url, { signal: controller.signal, headers: { "X-Requested-With": "XMLHttpRequest" } });
+                        if (!response.ok) throw new Error("No se pudieron cargar los productos.");
+                        const products = await response.json();
+                        if (requestController !== controller) return;
+                        const available = products.filter(product => !lines.some(line => line.id === product.idProducto));
+                        if (available.length === 0) {
+                            setSearchState(products.length > 0 ? "Los productos coincidentes ya están en este inventario." : `No encontramos productos para “${term}”.`);
+                            return;
+                        }
+                        available.forEach((product, index) => {
+                            const option = document.createElement("button");
+                            option.type = "button";
+                            option.className = "inventory-autocomplete-option";
+                            option.id = `inventario-producto-opcion-${product.idProducto}`;
+                            option.setAttribute("role", "option");
+                            option.setAttribute("aria-selected", "false");
+                            option.textContent = product.nombre;
+                            option.addEventListener("click", () => addProduct(product));
+                            option.addEventListener("keydown", event => {
+                                const options = [...results.querySelectorAll("[role='option']")];
+                                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                                    event.preventDefault();
+                                    const next = (index + (event.key === "ArrowDown" ? 1 : options.length - 1)) % options.length;
+                                    options[next]?.focus();
+                                } else if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    search.focus();
+                                    results.hidden = true;
+                                    search.setAttribute("aria-expanded", "false");
+                                }
+                            });
+                            results.append(option);
+                        });
+                        activeResult = -1;
+                        results.hidden = false;
+                        search.setAttribute("aria-expanded", "true");
+                        setSearchState(`${available.length} ${available.length === 1 ? "producto encontrado" : "productos encontrados"}. Usa las flechas y Enter, o selecciona con el ratón.`);
+                    } catch (error) {
+                        if (error.name === "AbortError") return;
+                        setSearchState("No se pudo buscar. Comprueba la conexión e inténtalo nuevamente.");
+                    } finally {
+                        if (requestController === controller) setSearchState(searchStatus.textContent, false);
+                    }
+                };
+
+                search.addEventListener("input", () => {
+                    clearTimeout(searchTimer);
+                    setSearchState(search.value.trim().length < 2 ? "Escribe al menos dos letras para buscar." : "Buscando productos…", search.value.trim().length >= 2);
+                    searchTimer = setTimeout(showProducts, 250);
+                });
+                search.addEventListener("keydown", event => {
+                    const options = [...results.querySelectorAll("[role='option']")];
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (!results.hidden && options.length > 0) options[activeResult >= 0 ? activeResult : 0].click();
+                    } else if (!results.hidden && options.length > 0 && event.key === "ArrowDown") {
+                        event.preventDefault();
+                        activeResult = (activeResult + 1) % options.length;
+                        options[activeResult].focus();
+                    } else if (!results.hidden && options.length > 0 && event.key === "ArrowUp") {
+                        event.preventDefault();
+                        activeResult = options.length - 1;
+                        options[activeResult].focus();
+                    } else if (event.key === "Escape" && !results.hidden) {
+                        event.preventDefault();
+                        results.hidden = true;
+                        search.setAttribute("aria-expanded", "false");
+                    }
+                });
+                warehouse.addEventListener("change", () => {
+                    requestController?.abort();
+                    if (lines.length > 0 && warehouse.value !== previousWarehouse) {
+                        pendingWarehouse = warehouse.value;
+                        warehouse.value = previousWarehouse;
+                        search.disabled = true;
+                        search.placeholder = "Confirma el cambio de almacén";
+                        results.hidden = true;
+                        results.replaceChildren();
+                        search.value = "";
+                        changeMessage.textContent = `Cambiar de almacén quitará los ${lines.length} productos agregados.`;
+                        changeWarning.hidden = false;
+                        confirmChange.focus();
+                        return;
+                    }
+                    previousWarehouse = warehouse.value;
+                    updateSearchAvailability();
+                    updateCountNote();
+                    search.value = "";
+                    results.replaceChildren();
+                    results.hidden = true;
+                    search.setAttribute("aria-expanded", "false");
+                    setSearchState(warehouse.value ? "Escribe al menos dos letras para buscar." : "");
+                });
+                confirmChange.addEventListener("click", () => {
+                    warehouse.value = pendingWarehouse ?? "";
+                    previousWarehouse = warehouse.value;
+                    pendingWarehouse = null;
+                    lines.length = 0;
+                    renderLines();
+                    changeWarning.hidden = true;
+                    updateSearchAvailability();
+                    updateCountNote();
+                    search.value = "";
+                    results.replaceChildren();
+                    setSearchState(warehouse.value ? "Escribe al menos dos letras para buscar." : "");
+                    search.focus();
+                });
+                cancelChange.addEventListener("click", () => {
+                    pendingWarehouse = null;
+                    changeWarning.hidden = true;
+                    updateSearchAvailability();
+                    setSearchState(warehouse.value ? "Escribe al menos dos letras para buscar." : "");
+                    search.focus();
+                });
+                document.getElementById("nuevoInventarioForm")?.addEventListener("submit", event => {
+                    if (lines.length === 0) {
+                        event.preventDefault();
+                        searchStatus.textContent = "Agrega al menos un producto antes de guardar.";
+                        search.focus();
+                        return;
+                    }
+                    if (initialCount && lines.length !== expectedArticles) {
+                        event.preventDefault();
+                        searchStatus.textContent = `La apertura inicial necesita los ${expectedArticles} artículos. Busca también los que tengan existencia cero.`;
+                        search.focus();
+                        return;
+                    }
+                    if (lines.some(line => line.cantidad === "" || !Number.isFinite(Number(line.cantidad)) || Number(line.cantidad) < 0)) {
+                        event.preventDefault();
+                        searchStatus.textContent = "Ingresa la cantidad física de cada producto; usa cero si no hay existencias.";
+                        rows.querySelector(".inventory-line-quantity:invalid")?.focus();
+                        return;
+                    }
+                    if (saveButton) { saveButton.disabled = true; saveButton.textContent = "Guardando inventario…"; }
+                });
+                modal?.addEventListener("hidden.bs.modal", () => {
+                    requestController?.abort();
+                    document.getElementById("nuevoInventarioForm")?.reset();
+                    lines.length = 0;
+                    previousWarehouse = "";
+                    initialCount = false;
+                    expectedArticles = 0;
+                    pendingWarehouse = null;
+                    changeWarning.hidden = true;
+                    results.replaceChildren();
+                    results.hidden = true;
+                    search.setAttribute("aria-expanded", "false");
+                    updateSearchAvailability();
+                    updateCountNote();
+                    setSearchState("");
+                    renderLines();
+                    if (saveButton) { saveButton.textContent = "Guardar inventario"; saveButton.disabled = true; }
+                });
+                renderLines();
+                updateSearchAvailability();
+                updateSaveState();
+            })();
+        </script>
+    }
 }

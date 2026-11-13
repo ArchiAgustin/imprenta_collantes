@@ -17,6 +17,10 @@ public sealed class Almacen
     [Column("activo")]
     public bool Activo { get; set; } = true;
 
+    [Column("predeterminado")]
+    public bool EsPredeterminado { get; set; }
+
+    // Legacy column retained for compatibility; one-shot cuts no longer set it.
     [Column("conteoEnCurso")]
     public bool ConteoEnCurso { get; set; }
 

@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ProyectoFinal.Data;
 using ProyectoFinal.Models;
+using ProyectoFinal.Services;
 
 namespace ProyectoFinal.Controllers;
 
 [Authorize(Roles = "Admin")]
-public class PermisosController(ApplicationDbContext context, RoleManager<IdentityRole> roleManager) : Controller
+public class PermisosController(IPermisosMatrizService matriz, RoleManager<IdentityRole> roleManager) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -27,10 +27,8 @@ public class PermisosController(ApplicationDbContext context, RoleManager<Identi
             return RedirectToAction(nameof(Index));
         }
 
-        var menus = await context.MenuSistema.AsNoTracking().Where(menu => menu.Activo).OrderBy(menu => menu.Orden).ToListAsync();
-        var current = await context.PermisoRolMenu.AsNoTracking()
-            .Where(permission => permission.RoleId == id)
-            .ToDictionaryAsync(permission => permission.MenuSistemaId);
+        var menus = await matriz.GetRoutableMenusAsync();
+        var current = await matriz.ObtenerActualesAsync(id);
         return View(BuildViewModel(role, menus, current));
     }
 
@@ -47,7 +45,7 @@ public class PermisosController(ApplicationDbContext context, RoleManager<Identi
             return RedirectToAction(nameof(Index));
         }
 
-        var menus = await context.MenuSistema.Where(menu => menu.Activo).OrderBy(menu => menu.Orden).ToListAsync();
+        var menus = await matriz.GetRoutableMenusAsync(tracking: true);
         model.RolNombre = role.Name ?? string.Empty;
         model.Menus ??= new List<MenuPermisoItemViewModel>();
         var submittedMenuIds = model.Menus.Select(menu => menu.MenuId).ToHashSet();
@@ -71,28 +69,7 @@ public class PermisosController(ApplicationDbContext context, RoleManager<Identi
             return View(viewModel);
         }
 
-        var existing = await context.PermisoRolMenu.Where(permission => permission.RoleId == id).ToDictionaryAsync(permission => permission.MenuSistemaId);
-        foreach (var item in model.Menus)
-        {
-            if (!item.PuedeVer && !item.PuedeCrear && !item.PuedeEditar && !item.PuedeEliminar && !item.PuedeProcesar)
-            {
-                if (existing.TryGetValue(item.MenuId, out var removed)) context.PermisoRolMenu.Remove(removed);
-                continue;
-            }
-
-            if (!existing.TryGetValue(item.MenuId, out var permission))
-            {
-                permission = new PermisoRolMenu { RoleId = id, MenuSistemaId = item.MenuId };
-                context.PermisoRolMenu.Add(permission);
-            }
-            permission.PuedeVer = item.PuedeVer;
-            permission.PuedeCrear = item.PuedeCrear;
-            permission.PuedeEditar = item.PuedeEditar;
-            permission.PuedeEliminar = item.PuedeEliminar;
-            permission.PuedeProcesar = item.PuedeProcesar;
-        }
-
-        await context.SaveChangesAsync();
+        await matriz.GuardarAsync(id, menus, model.Menus);
         TempData["Success"] = $"Se actualizaron los permisos del rol «{role.Name}».";
         return RedirectToAction(nameof(Index));
     }
@@ -107,12 +84,17 @@ public class PermisosController(ApplicationDbContext context, RoleManager<Identi
         Menus = menus.Select(menu =>
         {
             permissions.TryGetValue(menu.IdMenu, out var permission);
+            var destinationCode = menu.Destino ?? MenuDestinationRegistry.LegacyDestination(menu.Codigo);
+            MenuDestinationRegistry.TryGet(destinationCode, out var destination);
             return new MenuPermisoItemViewModel
             {
                 MenuId = menu.IdMenu,
                 Codigo = menu.Codigo,
                 Nombre = menu.Nombre,
                 ControllerNombre = menu.ControllerNombre,
+                Profundidad = menu.Profundidad,
+                DestinoNombre = destination?.Nombre,
+                ContextoJerarquia = menu.ContextoJerarquia,
                 PuedeVer = permission?.PuedeVer ?? false,
                 PuedeCrear = permission?.PuedeCrear ?? false,
                 PuedeEditar = permission?.PuedeEditar ?? false,
@@ -121,4 +103,5 @@ public class PermisosController(ApplicationDbContext context, RoleManager<Identi
             };
         }).ToList()
     };
+
 }

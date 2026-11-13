@@ -1,7 +1,10 @@
 @model ProyectoFinal.Models.Proveedor
+@using ProyectoFinal.Models
+@{ var tipos = (IEnumerable<DocumentoIdentidadTipo>)ViewBag.TiposDocumento; }
 <div class="identity-form-grid">
     <div class="form-group"><label asp-for="Nombre">Nombre del proveedor</label><input asp-for="Nombre" class="form-control" maxlength="100" /><span asp-validation-for="Nombre" class="text-danger"></span></div>
-    <div class="form-group"><label asp-for="Ruc">RUC</label><input asp-for="Ruc" class="form-control" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" /><span asp-validation-for="Ruc" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="IdDocumentoIdentidadTipo">Tipo de documento</label><select asp-for="IdDocumentoIdentidadTipo" class="form-select" data-document-type><option value="">Selecciona un documento</option>@foreach (var tipo in tipos) { <option value="@tipo.IdDocumentoIdentidadTipo" data-codigo="@tipo.Codigo">@tipo.Abreviatura</option> }</select><span asp-validation-for="IdDocumentoIdentidadTipo" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="NumeroDocumento">Número de documento</label><input asp-for="NumeroDocumento" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="11" autocomplete="off" /><span asp-validation-for="NumeroDocumento" class="text-danger"></span></div>
 </div>
 <div class="form-group"><label asp-for="Direccion">Dirección</label><input asp-for="Direccion" class="form-control" maxlength="255" /><span asp-validation-for="Direccion" class="text-danger"></span></div>
 <partial name="_UbigeoFields" />

@@ -22,6 +22,25 @@ namespace ProyectoFinal.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ProyectoFinal.Models.ConfiguracionCorreo", b =>
+                {
+                    b.Property<int>("Id").HasColumnType("int").HasColumnName("id");
+                    b.Property<DateTimeOffset>("ActualizadoUtc").HasColumnType("datetimeoffset").HasColumnName("actualizadoUtc");
+                    b.Property<string>("CorreoRemitente").IsRequired().HasMaxLength(254).HasColumnType("nvarchar(254)").HasColumnName("correoRemitente");
+                    b.Property<string>("ContrasenaProtegida").HasMaxLength(2000).HasColumnType("nvarchar(2000)").HasColumnName("contrasenaProtegida");
+                    b.Property<string>("NombreRemitente").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)").HasColumnName("nombreRemitente");
+                    b.Property<int>("Puerto").HasColumnType("int").HasColumnName("puerto");
+                    b.Property<string>("Servidor").IsRequired().HasMaxLength(250).HasColumnType("nvarchar(250)").HasColumnName("servidor");
+                    b.Property<string>("Usuario").HasMaxLength(250).HasColumnType("nvarchar(250)").HasColumnName("usuario");
+                    b.Property<bool>("UsarTls").HasColumnType("bit").HasColumnName("usarTls");
+                    b.HasKey("Id");
+                    b.ToTable("ConfiguracionCorreo", t =>
+                        {
+                            t.HasCheckConstraint("CK_ConfiguracionCorreo_Id", "[id] = 1");
+                            t.HasCheckConstraint("CK_ConfiguracionCorreo_Puerto", "[puerto] BETWEEN 1 AND 65535");
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -237,6 +256,10 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("conteoEnCurso");
 
+                    b.Property<bool>("EsPredeterminado")
+                        .HasColumnType("bit")
+                        .HasColumnName("predeterminado");
+
                     b.Property<DateTimeOffset?>("FechaActivacionUtc")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("fechaActivacionUtc");
@@ -251,6 +274,10 @@ namespace ProyectoFinal.Data.Migrations
 
                     b.HasIndex("Nombre")
                         .IsUnique();
+
+                    b.HasIndex("EsPredeterminado")
+                        .IsUnique()
+                        .HasFilter("[predeterminado] = 1");
 
                     b.ToTable("Almacen");
                 });
@@ -568,6 +595,14 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("idProducto");
 
+                    b.Property<int?>("IdPresentacionProducto")
+                        .HasColumnType("int")
+                        .HasColumnName("idPresentacionProducto");
+
+                    b.Property<decimal>("FactorPresentacion")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("factorPresentacion");
+
                     b.Property<decimal?>("PrecioUnitario")
                         .HasColumnType("decimal(10, 2)")
                         .HasColumnName("precioUnitario");
@@ -577,11 +612,23 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("productoNombreEmision");
 
+                    b.Property<string>("PresentacionDescripcion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("presentacionDescripcion");
+
+                    b.Property<string>("UnidadBaseDescripcion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("unidadBaseDescripcion");
+
                     b.HasKey("IdDetalleCotizacion");
 
                     b.HasIndex("IdCotizacion");
 
                     b.HasIndex("IdProducto");
+
+                    b.HasIndex("IdPresentacionProducto");
 
                     b.ToTable("DetalleCotizacion");
                 });
@@ -611,6 +658,14 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("idProducto");
 
+                    b.Property<int?>("IdPresentacionProducto")
+                        .HasColumnType("int")
+                        .HasColumnName("idPresentacionProducto");
+
+                    b.Property<decimal>("FactorPresentacion")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("factorPresentacion");
+
                     b.Property<decimal?>("PrecioUnitario")
                         .HasColumnType("decimal(10, 2)")
                         .HasColumnName("precioUnitario");
@@ -620,11 +675,23 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("productoNombre");
 
+                    b.Property<string>("PresentacionDescripcion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("presentacionDescripcion");
+
+                    b.Property<string>("UnidadBaseDescripcion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("unidadBaseDescripcion");
+
                     b.HasKey("IdDetallePedido");
 
                     b.HasIndex("IdPedido");
 
                     b.HasIndex("IdProducto");
+
+                    b.HasIndex("IdPresentacionProducto");
 
                     b.ToTable("DetallePedido");
                 });
@@ -654,6 +721,14 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("idProducto");
 
+                    b.Property<int?>("IdPresentacionProducto")
+                        .HasColumnType("int")
+                        .HasColumnName("idPresentacionProducto");
+
+                    b.Property<decimal>("FactorPresentacion")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("factorPresentacion");
+
                     b.Property<int>("IdVenta")
                         .HasColumnType("int")
                         .HasColumnName("idVenta");
@@ -668,13 +743,56 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("productoNombre");
 
+                    b.Property<string>("PresentacionDescripcion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("presentacionDescripcion");
+
+                    b.Property<string>("UnidadBaseDescripcion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("unidadBaseDescripcion");
+
                     b.HasKey("IdDetalleVenta");
 
                     b.HasIndex("IdProducto");
 
                     b.HasIndex("IdVenta");
 
+                    b.HasIndex("IdPresentacionProducto");
+
                     b.ToTable("DetalleVenta");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.DetraccionSunat", b =>
+                {
+                    b.Property<int>("IdDetraccion")
+                        .HasColumnType("int")
+                        .HasColumnName("iddetraccion");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasColumnName("codigo");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.Property<decimal?>("Porcentaje")
+                        .HasColumnType("decimal(9,2)")
+                        .HasColumnName("porcentaje");
+
+                    b.HasKey("IdDetraccion");
+
+                    b.ToTable("mae_detraccion");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.DocumentoIdentidadTipo", b =>
@@ -745,6 +863,143 @@ namespace ProyectoFinal.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("documentoidentidad_tipo");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.EntidadFinancieraSunat", b =>
+                {
+                    b.Property<int>("IdEntidadFinanciera")
+                        .HasColumnType("int")
+                        .HasColumnName("identidadfinanciera");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.Property<int>("IdTipoEntidadFinanciera")
+                        .HasColumnType("int")
+                        .HasColumnName("identidadfinancieratipo");
+
+                    b.HasKey("IdEntidadFinanciera");
+
+                    b.HasIndex("IdTipoEntidadFinanciera");
+
+                    b.ToTable("mae_entidadfinanciera");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.EstadoEnvioSunat", b =>
+                {
+                    b.Property<int>("IdEstadoEnvioSunat")
+                        .HasColumnType("int")
+                        .HasColumnName("idestadosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdEstadoEnvioSunat");
+
+                    b.ToTable("ven_estadosunat");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.Inventario", b =>
+                {
+                    b.Property<int>("IdInventario").ValueGeneratedOnAdd().HasColumnType("int").HasColumnName("idInventario");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdInventario"));
+                    b.Property<int>("Correlativo").HasColumnType("int").HasColumnName("correlativo");
+                    b.Property<DateOnly>("Fecha").HasColumnType("date").HasColumnName("fecha");
+                    b.Property<DateTimeOffset>("CreadoUtc").HasColumnType("datetimeoffset").HasColumnName("creadoUtc");
+                    b.Property<int>("IdAlmacen").HasColumnType("int").HasColumnName("idAlmacen");
+                    b.Property<int?>("IdCorteInventarioOrigen").HasColumnType("int").HasColumnName("idCorteInventarioOrigen");
+                    b.Property<string>("IdUsuario").HasMaxLength(450).HasColumnType("nvarchar(450)").HasColumnName("idUsuario");
+                    b.Property<string>("Serie").IsRequired().HasMaxLength(8).HasColumnType("nvarchar(8)").HasColumnName("serie");
+                    b.HasKey("IdInventario");
+                    b.HasIndex("IdAlmacen", "Fecha");
+                    b.HasIndex("IdCorteInventarioOrigen").IsUnique().HasFilter("[idCorteInventarioOrigen] IS NOT NULL");
+                    b.HasIndex("Serie", "Correlativo").IsUnique();
+                    b.ToTable("Inventario", t => t.HasCheckConstraint("CK_Inventario_Correlativo", "[correlativo] BETWEEN 1 AND 99999999"));
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.InventarioDetalle", b =>
+                {
+                    b.Property<int>("IdInventarioDetalle").ValueGeneratedOnAdd().HasColumnType("int").HasColumnName("idInventarioDetalle");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdInventarioDetalle"));
+                    b.Property<decimal>("CantidadContadaBase").HasColumnType("decimal(18,3)").HasColumnName("cantidadContadaBase");
+                    b.Property<decimal?>("CantidadSistemaBase").HasColumnType("decimal(18,3)").HasColumnName("cantidadSistemaBase");
+                    b.Property<int>("IdInventario").HasColumnType("int").HasColumnName("idInventario");
+                    b.Property<int>("IdProducto").HasColumnType("int").HasColumnName("idProducto");
+                    b.HasKey("IdInventarioDetalle");
+                    b.HasIndex("IdProducto");
+                    b.HasIndex("IdInventario", "IdProducto").IsUnique();
+                    b.ToTable("InventarioDetalle", t =>
+                        {
+                            t.HasCheckConstraint("CK_InventarioDetalle_Cantidad", "[cantidadContadaBase] >= 0");
+                            t.HasCheckConstraint("CK_InventarioDetalle_Sistema", "[cantidadSistemaBase] IS NULL OR [cantidadSistemaBase] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.SerieInventario", b =>
+                {
+                    b.Property<int>("IdSerieInventario").ValueGeneratedOnAdd().HasColumnType("int").HasColumnName("idSerieInventario");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdSerieInventario"));
+                    b.Property<bool>("Activa").HasColumnType("bit").HasColumnName("activa");
+                    b.Property<int>("Digitos").HasColumnType("int").HasColumnName("digitos");
+                    b.Property<string>("Serie").IsRequired().HasMaxLength(8).HasColumnType("nvarchar(8)").HasColumnName("serie");
+                    b.Property<int>("SiguienteCorrelativo").HasColumnType("int").HasColumnName("siguienteCorrelativo");
+                    b.HasKey("IdSerieInventario");
+                    b.HasIndex("Activa").IsUnique().HasFilter("[activa] = 1");
+                    b.HasIndex("Serie").IsUnique();
+                    b.ToTable("SerieInventario", t =>
+                        {
+                            t.HasCheckConstraint("CK_SerieInventario_Correlativo", "[siguienteCorrelativo] BETWEEN 1 AND 99999999");
+                            t.HasCheckConstraint("CK_SerieInventario_Digitos", "[digitos] = 8");
+                        });
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.Inventario", b =>
+                {
+                    b.HasOne("ProyectoFinal.Models.Almacen", "Almacen")
+                        .WithMany().HasForeignKey("IdAlmacen").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("ProyectoFinal.Models.CorteInventario", "CorteInventarioOrigen")
+                        .WithMany().HasForeignKey("IdCorteInventarioOrigen").OnDelete(DeleteBehavior.Restrict);
+                    b.Navigation("Almacen");
+                    b.Navigation("CorteInventarioOrigen");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.InventarioDetalle", b =>
+                {
+                    b.HasOne("ProyectoFinal.Models.Inventario", "Inventario")
+                        .WithMany("Detalles").HasForeignKey("IdInventario").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("ProyectoFinal.Models.Producto", "Producto")
+                        .WithMany().HasForeignKey("IdProducto").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("Inventario");
+                    b.Navigation("Producto");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.Inventario", b =>
+                {
+                    b.Navigation("Detalles");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.Kardex", b =>
@@ -839,10 +1094,23 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnName("codigo");
 
                     b.Property<string>("ControllerNombre")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("controllerNombre");
+
+                    b.Property<string>("Destino")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("destino");
+
+                    b.Property<string>("Icono")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("icono");
+
+                    b.Property<int?>("IdMenuPadre")
+                        .HasColumnType("int")
+                        .HasColumnName("idMenuPadre");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -859,7 +1127,134 @@ namespace ProyectoFinal.Data.Migrations
                     b.HasIndex("Codigo")
                         .IsUnique();
 
+                    b.HasIndex("Destino")
+                        .IsUnique()
+                        .HasFilter("[destino] IS NOT NULL");
+
+                    b.HasIndex("IdMenuPadre");
+
                     b.ToTable("MenuSistema");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.MonedaSunat", b =>
+                {
+                    b.Property<int>("IdMoneda")
+                        .HasColumnType("int")
+                        .HasColumnName("idmoneda");
+
+                    b.Property<string>("CodigoIso")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasColumnName("codigoiso");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(1)
+                        .HasColumnType("char(1)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.Property<string>("Simbolo")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasColumnName("simbolo");
+
+                    b.HasKey("IdMoneda");
+
+                    b.ToTable("mae_moneda");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.MotivoNotaCreditoSunat", b =>
+                {
+                    b.Property<int>("IdMotivoNotaCredito")
+                        .HasColumnType("int")
+                        .HasColumnName("idmotivonc");
+
+                    b.Property<string>("CodigoSunat")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdMotivoNotaCredito");
+
+                    b.ToTable("mae_motivonc");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.MotivoNotaDebitoSunat", b =>
+                {
+                    b.Property<int>("IdMotivoNotaDebito")
+                        .HasColumnType("int")
+                        .HasColumnName("idmotivond");
+
+                    b.Property<string>("CodigoSunat")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdMotivoNotaDebito");
+
+                    b.ToTable("mae_motivond");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.MotivoTrasladoSunat", b =>
+                {
+                    b.Property<int>("IdMotivoTraslado")
+                        .HasColumnType("int")
+                        .HasColumnName("idmotivotraslado");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdMotivoTraslado");
+
+                    b.ToTable("mae_motivotraslado");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.Pedido", b =>
@@ -1077,6 +1472,10 @@ namespace ProyectoFinal.Data.Migrations
 
             modelBuilder.Entity("ProyectoFinal.Models.Proveedor", b =>
                 {
+                    b.Property<int?>("IdDocumentoIdentidadTipo")
+                        .HasColumnType("int")
+                        .HasColumnName("idDocumentoIdentidadTipo");
+
                     b.Property<int>("IdProveedor")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -1099,6 +1498,11 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("nombre");
 
+                    b.Property<string>("NumeroDocumento")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("numeroDocumento");
+
                     b.Property<string>("Ruc")
                         .HasMaxLength(11)
                         .HasColumnType("nvarchar(11)")
@@ -1114,6 +1518,10 @@ namespace ProyectoFinal.Data.Migrations
                     b.HasIndex("Ruc")
                         .IsUnique()
                         .HasFilter("[ruc] IS NOT NULL");
+
+                    b.HasIndex("IdDocumentoIdentidadTipo", "NumeroDocumento")
+                        .IsUnique()
+                        .HasFilter("[idDocumentoIdentidadTipo] IS NOT NULL AND [numeroDocumento] IS NOT NULL");
 
                     b.HasIndex("UbigeoCodigo");
 
@@ -1147,6 +1555,10 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("siguienteCorrelativo");
 
+                    b.Property<int?>("IdTipoComprobanteSunat")
+                        .HasColumnType("int")
+                        .HasColumnName("idTipoComprobanteSunat");
+
                     b.Property<string>("TipoDocumento")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1158,6 +1570,8 @@ namespace ProyectoFinal.Data.Migrations
                     b.HasIndex("TipoDocumento")
                         .IsUnique()
                         .HasFilter("[activa] = 1");
+
+                    b.HasIndex("IdTipoComprobanteSunat");
 
                     b.HasIndex("TipoDocumento", "Serie")
                         .IsUnique();
@@ -1201,6 +1615,162 @@ namespace ProyectoFinal.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_Stock_CantidadBase", "[cantidadBase] >= 0");
                         });
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.TipoActividadSunat", b =>
+                {
+                    b.Property<int>("IdTipoActividad")
+                        .HasColumnType("int")
+                        .HasColumnName("idtipoactividad");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdTipoActividad");
+
+                    b.ToTable("mae_tipoactividad");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.TipoContribuyenteSunat", b =>
+                {
+                    b.Property<int>("IdTipoContribuyente")
+                        .HasColumnType("int")
+                        .HasColumnName("idtipocontribuyente");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdTipoContribuyente");
+
+                    b.ToTable("mae_tipocontribuyente");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.TipoDocumentoPagoSunat", b =>
+                {
+                    b.Property<int>("IdTipoDocumentoPago")
+                        .HasColumnType("int")
+                        .HasColumnName("idtipodocumentopago");
+
+                    b.Property<string>("CodigoSunat")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("char(3)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.Property<bool?>("MostrarRc")
+                        .HasColumnType("bit")
+                        .HasColumnName("mostrar_rc");
+
+                    b.HasKey("IdTipoDocumentoPago");
+
+                    b.ToTable("mae_tipodocumentopago");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.TipoEntidadFinancieraSunat", b =>
+                {
+                    b.Property<int>("IdTipoEntidadFinanciera")
+                        .HasColumnType("int")
+                        .HasColumnName("identidadfinancieratipo");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdTipoEntidadFinanciera");
+
+                    b.ToTable("mae_entidadfinanciera_tipo");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.TipoMedioPagoSunat", b =>
+                {
+                    b.Property<int>("IdTipoMedioPago")
+                        .HasColumnType("int")
+                        .HasColumnName("idtipomediopago");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<bool?>("CuentaInterna")
+                        .HasColumnType("bit")
+                        .HasColumnName("cuentainterna");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.Property<bool?>("MonederoDigital")
+                        .HasColumnType("bit")
+                        .HasColumnName("monederodigital");
+
+                    b.HasKey("IdTipoMedioPago");
+
+                    b.ToTable("mae_tipomediopago");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.Ubigeo", b =>
@@ -1282,6 +1852,25 @@ namespace ProyectoFinal.Data.Migrations
                     b.ToTable("UnidadMedida");
                 });
 
+            modelBuilder.Entity("ProyectoFinal.Models.TransferenciaAlmacen", b =>
+                {
+                    b.Property<int>("IdTransferenciaAlmacen")
+                        .ValueGeneratedOnAdd().HasColumnType("int").HasColumnName("idTransferenciaAlmacen");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdTransferenciaAlmacen"));
+                    b.Property<decimal>("CantidadBase").HasColumnType("decimal(18,3)").HasColumnName("cantidadBase");
+                    b.Property<DateTimeOffset>("FechaUtc").HasColumnType("datetimeoffset").HasColumnName("fechaUtc");
+                    b.Property<int>("IdAlmacenDestino").HasColumnType("int").HasColumnName("idAlmacenDestino");
+                    b.Property<int>("IdAlmacenOrigen").HasColumnType("int").HasColumnName("idAlmacenOrigen");
+                    b.Property<int>("IdProducto").HasColumnType("int").HasColumnName("idProducto");
+                    b.Property<string>("IdUsuario").HasMaxLength(450).HasColumnType("nvarchar(450)").HasColumnName("idUsuario");
+                    b.Property<string>("Motivo").IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)").HasColumnName("motivo");
+                    b.HasKey("IdTransferenciaAlmacen");
+                    b.HasIndex("IdProducto");
+                    b.HasIndex("IdAlmacenDestino", "FechaUtc");
+                    b.HasIndex("IdAlmacenOrigen", "FechaUtc");
+                    b.ToTable("TransferenciaAlmacen", t => t.HasCheckConstraint("CK_TransferenciaAlmacen_Almacenes", "[idAlmacenOrigen] <> [idAlmacenDestino]"));
+                });
+
             modelBuilder.Entity("ProyectoFinal.Models.Venta", b =>
                 {
                     b.Property<int>("IdVenta")
@@ -1332,6 +1921,15 @@ namespace ProyectoFinal.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("idCotizacion");
 
+                    b.Property<int?>("IdAlmacen")
+                        .HasColumnType("int")
+                        .HasColumnName("idAlmacen");
+
+                    b.Property<string>("AlmacenNombreEmision")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("almacenNombreEmision");
+
                     b.Property<string>("IdUsuario")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)")
@@ -1358,6 +1956,8 @@ namespace ProyectoFinal.Data.Migrations
 
                     b.HasIndex("IdCliente");
 
+                    b.HasIndex("IdAlmacen");
+
                     b.HasIndex("IdCotizacion")
                         .IsUnique();
 
@@ -1368,6 +1968,68 @@ namespace ProyectoFinal.Data.Migrations
                         .HasFilter("[serieInterna] IS NOT NULL AND [correlativoInterno] IS NOT NULL");
 
                     b.ToTable("Venta");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.ViaTipoSunat", b =>
+                {
+                    b.Property<int>("IdViaTipo")
+                        .HasColumnType("int")
+                        .HasColumnName("idviatipo");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdViaTipo");
+
+                    b.ToTable("mae_via_tipo");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.ZonaTipoSunat", b =>
+                {
+                    b.Property<int>("IdZonaTipo")
+                        .HasColumnType("int")
+                        .HasColumnName("idzonatipo");
+
+                    b.Property<string>("CodigoSunat")
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)")
+                        .HasColumnName("codigosunat");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("DescripcionCorta")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("desc_corta");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit")
+                        .HasColumnName("estado");
+
+                    b.HasKey("IdZonaTipo");
+
+                    b.ToTable("mae_zona_tipo");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1499,9 +2161,16 @@ namespace ProyectoFinal.Data.Migrations
                         .WithMany("DetalleCotizacions")
                         .HasForeignKey("IdProducto");
 
+                    b.HasOne("ProyectoFinal.Models.PresentacionProducto", "Presentacion")
+                        .WithMany()
+                        .HasForeignKey("IdPresentacionProducto")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("IdCotizacionNavigation");
 
                     b.Navigation("IdProductoNavigation");
+
+                    b.Navigation("Presentacion");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.DetallePedido", b =>
@@ -1515,9 +2184,16 @@ namespace ProyectoFinal.Data.Migrations
                         .HasForeignKey("IdProducto")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("ProyectoFinal.Models.PresentacionProducto", "Presentacion")
+                        .WithMany()
+                        .HasForeignKey("IdPresentacionProducto")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("IdPedidoNavigation");
 
                     b.Navigation("IdProductoNavigation");
+
+                    b.Navigation("Presentacion");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.DetalleVenta", b =>
@@ -1534,9 +2210,27 @@ namespace ProyectoFinal.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ProyectoFinal.Models.PresentacionProducto", "Presentacion")
+                        .WithMany()
+                        .HasForeignKey("IdPresentacionProducto")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Producto");
 
                     b.Navigation("Venta");
+
+                    b.Navigation("Presentacion");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.EntidadFinancieraSunat", b =>
+                {
+                    b.HasOne("ProyectoFinal.Models.TipoEntidadFinancieraSunat", "Tipo")
+                        .WithMany()
+                        .HasForeignKey("IdTipoEntidadFinanciera")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tipo");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.Kardex", b =>
@@ -1556,6 +2250,16 @@ namespace ProyectoFinal.Data.Migrations
                     b.Navigation("Almacen");
 
                     b.Navigation("Producto");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.MenuSistema", b =>
+                {
+                    b.HasOne("ProyectoFinal.Models.MenuSistema", "MenuPadre")
+                        .WithMany("Hijos")
+                        .HasForeignKey("IdMenuPadre")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("MenuPadre");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.Pedido", b =>
@@ -1608,7 +2312,7 @@ namespace ProyectoFinal.Data.Migrations
             modelBuilder.Entity("ProyectoFinal.Models.PresentacionProducto", b =>
                 {
                     b.HasOne("ProyectoFinal.Models.Producto", "Producto")
-                        .WithMany()
+                        .WithMany("Presentaciones")
                         .HasForeignKey("IdProducto")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1638,6 +2342,8 @@ namespace ProyectoFinal.Data.Migrations
                     b.Navigation("IdProveedorNavigation");
 
                     b.Navigation("UnidadMedidaBase");
+
+                    b.Navigation("Presentaciones");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.Proveedor", b =>
@@ -1649,6 +2355,13 @@ namespace ProyectoFinal.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Ubigeo");
+                });
+
+            modelBuilder.Entity("ProyectoFinal.Models.SerieDocumentoInterno", b =>
+                {
+                    b.HasOne("ProyectoFinal.Models.TipoDocumentoPagoSunat", "TipoComprobanteSunat")
+                        .WithMany().HasForeignKey("IdTipoComprobanteSunat").OnDelete(DeleteBehavior.Restrict);
+                    b.Navigation("TipoComprobanteSunat");
                 });
 
             modelBuilder.Entity("ProyectoFinal.Models.StockAlmacen", b =>
@@ -1670,8 +2383,23 @@ namespace ProyectoFinal.Data.Migrations
                     b.Navigation("Producto");
                 });
 
+            modelBuilder.Entity("ProyectoFinal.Models.TransferenciaAlmacen", b =>
+                {
+                    b.HasOne("ProyectoFinal.Models.Almacen", "AlmacenDestino")
+                        .WithMany().HasForeignKey("IdAlmacenDestino").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("ProyectoFinal.Models.Almacen", "AlmacenOrigen")
+                        .WithMany().HasForeignKey("IdAlmacenOrigen").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("ProyectoFinal.Models.Producto", "Producto")
+                        .WithMany().HasForeignKey("IdProducto").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("AlmacenDestino");
+                    b.Navigation("AlmacenOrigen");
+                    b.Navigation("Producto");
+                });
+
             modelBuilder.Entity("ProyectoFinal.Models.Venta", b =>
                 {
+                    b.HasOne("ProyectoFinal.Models.Almacen", "Almacen")
+                        .WithMany().HasForeignKey("IdAlmacen").OnDelete(DeleteBehavior.Restrict);
                     b.HasOne("ProyectoFinal.Models.Cliente", "Cliente")
                         .WithMany()
                         .HasForeignKey("IdCliente")
@@ -1689,6 +2417,8 @@ namespace ProyectoFinal.Data.Migrations
                         .HasForeignKey("IdUsuario");
 
                     b.Navigation("Cliente");
+
+                    b.Navigation("Almacen");
 
                     b.Navigation("Cotizacion");
 
@@ -1718,6 +2448,8 @@ namespace ProyectoFinal.Data.Migrations
 
             modelBuilder.Entity("ProyectoFinal.Models.MenuSistema", b =>
                 {
+                    b.Navigation("Hijos");
+
                     b.Navigation("Permisos");
                 });
 
@@ -1737,6 +2469,13 @@ namespace ProyectoFinal.Data.Migrations
 
             modelBuilder.Entity("ProyectoFinal.Models.Proveedor", b =>
                 {
+                    b.HasOne("ProyectoFinal.Models.DocumentoIdentidadTipo", "DocumentoIdentidadTipo")
+                        .WithMany()
+                        .HasForeignKey("IdDocumentoIdentidadTipo")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("DocumentoIdentidadTipo");
+
                     b.Navigation("Productos");
                 });
 
@@ -1745,6 +2484,26 @@ namespace ProyectoFinal.Data.Migrations
                     b.Navigation("Detalles");
 
                     b.Navigation("Pedido");
+
+                    b.Navigation("Almacen");
+                });
+            modelBuilder.Entity("ProyectoFinal.Models.TramoDescuentoProducto", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<int>("IdProducto").HasColumnType("int");
+                    b.Property<int>("CantidadMinima").HasColumnType("int");
+                    b.Property<decimal>("DescuentoPorcentaje").HasColumnType("decimal(5,2)");
+                    b.HasKey("Id");
+                    b.HasIndex("IdProducto", "CantidadMinima").IsUnique();
+                    b.ToTable("TramoDescuentoProducto", t =>
+                    {
+                        t.HasCheckConstraint("CK_TramoDescuento_Cantidad", "[CantidadMinima] BETWEEN 1 AND 1000000");
+                        t.HasCheckConstraint("CK_TramoDescuento_Porcentaje", "[DescuentoPorcentaje] BETWEEN 0 AND 99.99");
+                    });
+                    b.HasOne("ProyectoFinal.Models.Producto", "Producto")
+                        .WithMany().HasForeignKey("IdProducto").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Producto");
                 });
 #pragma warning restore 612, 618
         }

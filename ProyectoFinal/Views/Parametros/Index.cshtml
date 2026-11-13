@@ -1,0 +1,30 @@
+@model ProyectoFinal.Models.ParametrosCorreoViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Parámetros";
+}
+
+<div class="page-heading-row"><div><h1>Parámetros</h1><p class="intro">Configura el correo saliente utilizado por Identity para recuperación de contraseña.</p></div></div>
+<div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+<section class="form-section" aria-labelledby="smtp-title">
+    <h2 id="smtp-title">Correo SMTP</h2>
+    <p class="auth-footnote">La contraseña se cifra antes de guardarse y nunca vuelve a mostrarse. Déjala vacía para conservar la guardada. Usa TLS y una contraseña de aplicación cuando tu proveedor lo requiera.</p>
+    <form asp-action="Guardar" method="post" class="identity-form">
+        <div class="identity-form-grid">
+            <div class="form-group"><label asp-for="Servidor"></label><input asp-for="Servidor" class="form-control" autocomplete="off" /><span asp-validation-for="Servidor" class="text-danger"></span></div>
+            <div class="form-group"><label asp-for="Puerto"></label><input asp-for="Puerto" class="form-control" type="number" min="1" max="65535" /><span asp-validation-for="Puerto" class="text-danger"></span></div>
+            <div class="form-group"><label asp-for="CorreoRemitente"></label><input asp-for="CorreoRemitente" class="form-control" autocomplete="email" /><span asp-validation-for="CorreoRemitente" class="text-danger"></span></div>
+            <div class="form-group"><label asp-for="NombreRemitente"></label><input asp-for="NombreRemitente" class="form-control" /><span asp-validation-for="NombreRemitente" class="text-danger"></span></div>
+            <div class="form-group"><label asp-for="Usuario"></label><input asp-for="Usuario" class="form-control" autocomplete="username" /><span asp-validation-for="Usuario" class="text-danger"></span></div>
+            <div class="form-group"><label asp-for="Contrasena"></label><input asp-for="Contrasena" class="form-control" autocomplete="new-password" placeholder="@(Model.TieneContrasenaGuardada ? "Guardada; vacío conserva la actual" : "Ingresa la contraseña SMTP")" /><span asp-validation-for="Contrasena" class="text-danger"></span></div>
+        </div>
+        <div class="form-check"><input asp-for="UsarTls" class="form-check-input" /><label asp-for="UsarTls" class="form-check-label"></label></div>
+        <div class="page-actions"><button type="submit" class="btn btn-primary">Guardar parámetros</button></div>
+    </form>
+</section>
+<section class="form-section" aria-labelledby="test-title">
+    <h2 id="test-title">Probar envío</h2>
+    <p>El correo de prueba se enviará a la cuenta Admin actual: <strong>@(Model.UsuarioPrueba ?? "sin correo registrado")</strong>.</p>
+    <form asp-action="EnviarPrueba" method="post"><button type="submit" class="btn btn-outline-primary" disabled="@(string.IsNullOrWhiteSpace(Model.UsuarioPrueba))">Enviar correo de prueba</button></form>
+</section>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

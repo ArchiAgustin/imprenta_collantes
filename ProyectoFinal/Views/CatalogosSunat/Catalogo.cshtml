@@ -1,0 +1,67 @@
+@model ProyectoFinal.Models.CatalogoSunatPaginaViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = Model.Catalogo.Nombre;
+    var first = Model.Total == 0 ? 0 : (Model.Pagina - 1) * ProyectoFinal.Services.CatalogoSunatService.FilasPorPagina + 1;
+    var last = Math.Min(Model.Pagina * ProyectoFinal.Services.CatalogoSunatService.FilasPorPagina, Model.Total);
+    var puedeProcesar = ViewBag.PuedeProcesar is true;
+}
+<div class="page-heading-row">
+    <div><h1>@Model.Catalogo.Nombre</h1><p class="intro">@Model.Catalogo.Descripcion</p></div>
+    <a class="btn btn-outline-secondary" asp-controller="CatalogosSunat" asp-action="Index">Todos los catálogos</a>
+</div>
+<form asp-action="@Model.Catalogo.Accion" method="get" class="sunat-catalog-filter" role="search">
+    <label for="sunat-search">Buscar por código, descripción o detalle</label>
+    <div><input id="sunat-search" name="q" value="@Model.Busqueda" class="form-control" maxlength="100" /><button class="btn btn-primary" type="submit">Buscar</button></div>
+</form>
+<div class="sunat-catalog-summary" aria-live="polite">
+    <span>@first–@last de @Model.Total registros</span>
+    <span class="auth-footnote">Códigos de referencia · solo lectura</span>
+</div>
+@if (Model.Filas.Count == 0)
+{
+    <div class="empty-state" role="status"><strong>No hay filas para mostrar.</strong><p>Prueba otra búsqueda o elimina el filtro.</p></div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle sunat-catalog-table">
+            <thead><tr><th scope="col">ID</th><th scope="col">Código</th><th scope="col">Descripción</th><th scope="col">Detalle</th><th scope="col">Estado</th>@if (Model.Catalogo.PermiteActivar && puedeProcesar) { <th scope="col">Gestión</th> }</tr></thead>
+            <tbody>
+            @foreach (var row in Model.Filas)
+            {
+                <tr>
+                    <td class="sunat-id">@row.Id</td>
+                    <td class="sunat-code">@(string.IsNullOrWhiteSpace(row.Codigo) ? "—" : row.Codigo)</td>
+                    <th scope="row">@row.Descripcion</th>
+                    <td>@(string.IsNullOrWhiteSpace(row.Detalle) ? "—" : row.Detalle)</td>
+                    <td>@(row.Activo is null ? "Solo consulta" : row.Activo.Value ? "Activo" : "Inactivo")</td>
+                    @if (Model.Catalogo.PermiteActivar && puedeProcesar)
+                    {
+                        <td>
+                            <form asp-action="CambiarEstado" method="post" class="inline-action-form" onsubmit="return confirm('@(row.Activo == true ? "¿Desactivar este código?" : "¿Activar este código?")');">
+                                <input type="hidden" name="catalogo" value="@Model.Catalogo.Codigo" />
+                                <input type="hidden" name="id" value="@row.Id" />
+                                <input type="hidden" name="activo" value="@(!(row.Activo ?? false))" />
+                                <input type="hidden" name="q" value="@Model.Busqueda" />
+                                <input type="hidden" name="pagina" value="@Model.Pagina" />
+                                <button type="submit" class="btn btn-sm @(row.Activo == true ? "btn-outline-danger" : "btn-outline-primary")" disabled="@row.Bloqueado">@(row.Activo == true ? "Desactivar" : "Activar")</button>
+                            </form>
+                            @if (row.Bloqueado && row.MotivoBloqueo is not null) { <small class="form-text">@row.MotivoBloqueo</small> }
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+@if (Model.Paginas > 1)
+{
+    <nav class="sunat-pagination" aria-label="Páginas del catálogo">
+        @if (Model.Pagina > 1) { <a class="btn btn-outline-secondary" asp-action="@Model.Catalogo.Accion" asp-route-q="@Model.Busqueda" asp-route-pagina="@(Model.Pagina - 1)">Anterior</a> }
+        <span>Página @Model.Pagina de @Model.Paginas</span>
+        @if (Model.Pagina < Model.Paginas) { <a class="btn btn-outline-secondary" asp-action="@Model.Catalogo.Accion" asp-route-q="@Model.Busqueda" asp-route-pagina="@(Model.Pagina + 1)">Siguiente</a> }
+    </nav>
+}
+<p class="auth-footnote">Los códigos y descripciones son de referencia. Para conservar su integridad, los cambios normativos se incorporan mediante una actualización revisada; aquí solo se gestiona su estado.</p>

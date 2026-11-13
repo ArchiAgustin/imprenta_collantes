@@ -9,6 +9,7 @@
         <h1>Usuarios</h1>
         <p class="intro">Consulta las cuentas y administra sus roles sin perder asignaciones existentes.</p>
     </div>
+    <a class="btn btn-primary" asp-action="CrearUsuario">Crear usuario</a>
 </div>
 
 @if (!Model.Any())
@@ -20,13 +21,13 @@ else
     <div class="table-responsive">
         <table class="table align-middle">
             <thead>
-                <tr><th scope="col">Correo</th><th scope="col">Roles asignados</th><th scope="col">Acciones</th></tr>
+                <tr><th scope="col">Cuenta</th><th scope="col">Roles asignados</th><th scope="col">Correo</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr>
             </thead>
             <tbody>
                 @foreach (var user in Model)
                 {
                     <tr>
-                        <td class="user-email">@user.Correo</td>
+                        <th scope="row" class="user-email">@user.Correo @if (user.EsCuentaPropia) { <span class="text-muted">· tu cuenta</span> }</th>
                         <td>
                             @if (user.Roles.Count == 0)
                             {
@@ -42,8 +43,24 @@ else
                                 </div>
                             }
                         </td>
-                        <td>
+                        <td>@(user.CorreoConfirmado ? "Confirmado" : "Sin confirmar")</td>
+                        <td>@(user.Activo ? "Activa" : "Desactivada")</td>
+                        <td class="user-actions">
                             <a class="btn btn-sm btn-outline-primary" asp-action="AssignRole" asp-route-userId="@user.Id">Administrar roles</a>
+                            @if (!user.CorreoConfirmado)
+                            {
+                                <form asp-action="ReenviarConfirmacion" method="post" class="inline-action-form">
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Reenviar confirmación</button>
+                                </form>
+                            }
+                            @if (!user.EsCuentaPropia)
+                            {
+                                <form asp-action="CambiarEstado" method="post" class="inline-action-form" onsubmit="return confirm('@(user.Activo ? "¿Desactivar esta cuenta? Sus sesiones quedarán invalidadas." : "¿Reactivar esta cuenta?")');">
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <button type="submit" class="btn btn-sm @(user.Activo ? "btn-outline-danger" : "btn-outline-primary")">@(user.Activo ? "Desactivar" : "Reactivar")</button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }

@@ -1,18 +1,14 @@
 ﻿@model ProyectoFinal.Models.Producto
+@using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Editar producto";
 }
 
-<h1>Editar producto</h1>
-
-<h4>Producto</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="page-heading-row"><div><h1>Editar producto</h1><p class="intro">Actualiza los datos del producto; sus existencias actuales no cambian aquí.</p></div></div>
+<form asp-action="Edit" method="post" class="panel-form">
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
             <input type="hidden" asp-for="IdProducto" />
             <input type="hidden" asp-for="RowVersion" />
             <div class="form-group">
@@ -26,9 +22,10 @@
                 <span asp-validation-for="Descripcion" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Precio" class="control-label"></label>
+                <label asp-for="Precio" class="control-label">Precio por unidad base sin IGV</label>
                 <input asp-for="Precio" class="form-control" />
                 <span asp-validation-for="Precio" class="text-danger"></span>
+                <div class="form-text">Las presentaciones calculan su precio inicial aplicando el factor a este importe.</div>
             </div>
             <div class="form-group">
                 <label asp-for="CostoUnitarioSinIgv" class="control-label">Costo unitario sin IGV <span class="field-optional">(opcional)</span></label>
@@ -41,23 +38,33 @@
                 <label asp-for="EsServicio" class="form-check-label"></label>
                 <div class="form-text">Los servicios no controlan ni descuentan existencias.</div>
             </div>
+            <div class="form-group">
+                <label asp-for="IdUnidadMedidaBase">Unidad base del artículo</label>
+                <select asp-for="IdUnidadMedidaBase" class="form-select" asp-items="@(ViewData["UnidadesMedida"] as IEnumerable<SelectListItem>)" data-base-unit>
+                    <option value="">Selecciona una unidad revisada</option>
+                </select>
+                <span asp-validation-for="IdUnidadMedidaBase" class="text-danger"></span>
+                <div class="form-text">Cambiar una unidad base con movimientos o documentos asociados está bloqueado para proteger los históricos.</div>
+            </div>
             <p class="form-text">Las existencias se gestionan en Inventario; editar un producto no altera el stock.</p>
             <div class="form-group">
                 <label asp-for="IdProveedor" class="control-label"></label>
                 <select asp-for="IdProveedor" class="form-control" asp-items="ViewBag.IdProveedor"></select>
                 <span asp-validation-for="IdProveedor" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Guardar cambios" class="btn btn-primary" />
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="page-actions">
-    <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver a productos</a>
-</div>
+            <div class="page-actions"><button type="submit" class="btn btn-primary">Guardar cambios</button><a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a></div>
+</form>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (() => {
+            const service = document.getElementById("EsServicio");
+            const unit = document.querySelector("[data-base-unit]");
+            if (!service || !unit) return;
+            const update = () => { unit.disabled = service.checked; unit.required = !service.checked; if (service.checked) unit.value = ""; };
+            service.addEventListener("change", update);
+            update();
+        })();
+    </script>
 }

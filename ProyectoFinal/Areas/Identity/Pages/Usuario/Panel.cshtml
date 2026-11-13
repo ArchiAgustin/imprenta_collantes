@@ -4,6 +4,17 @@
     Layout = "/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Panel";
 }
+@functions {
+    static IEnumerable<ProyectoFinal.Services.MenuNavigationItem> MainDestinations(IEnumerable<ProyectoFinal.Services.MenuNavigationItem> menus)
+    {
+        foreach (var menu in menus)
+        {
+            if (menu.PuedeNavegar) yield return menu;
+            foreach (var child in menu.Children)
+                if (child.PuedeNavegar) yield return child;
+        }
+    }
+}
 <h1>Panel de trabajo</h1>
 <p class="intro">Cada módulo tiene su lugar. Selecciona el registro que necesitas consultar o actualizar.</p>
 @if (Model.Menus.Count == 0)
@@ -13,9 +24,9 @@
 else
 {
     <div class="module-list mt-4">
-        @foreach (var menu in Model.Menus)
+        @foreach (var menu in MainDestinations(Model.Menus))
         {
-            <a class="module-item" asp-area="" asp-controller="@menu.ControllerNombre" asp-action="Index">
+            <a class="module-item" asp-area="" asp-controller="@menu.ControllerNombre" asp-action="@menu.ActionNombre">
                 <div><h2>@menu.Nombre</h2><p>Acceso según los permisos asignados a tu rol.</p></div>
                 <span class="module-cta">Abrir módulo</span>
             </a>

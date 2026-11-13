@@ -14,7 +14,10 @@
         const texto = esRuc ? '' : '(opcional para DNI)';
         for (const label of document.querySelectorAll('[data-address-optional], [data-ubigeo-optional]')) label.textContent = texto;
         const documento = document.querySelector('#NumeroDocumento');
-        if (documento && tipo) documento.maxLength = tipo.selectedOptions[0]?.dataset.codigo === '1' ? 8 : 11;
+        if (documento && tipo) {
+            const codigo = tipo.selectedOptions[0]?.dataset.codigo;
+            documento.maxLength = codigo === '1' ? 8 : codigo === '4' ? 9 : 11;
+        }
     }
 
     function limpiar(select, etiqueta) {

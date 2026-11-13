@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using ProyectoFinal.Data;
 using ProyectoFinal.Models;
 using ProyectoFinal.Services;
 
@@ -15,19 +13,29 @@ namespace ProyectoFinal.Controllers
     [Authorize]
     public class ProveedorsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IProveedoresCatalogoService _catalogo;
         private readonly IdentificacionService _identificacion;
 
-        public ProveedorsController(ApplicationDbContext context, IdentificacionService identificacion)
+        public ProveedorsController(IProveedoresCatalogoService catalogo, IdentificacionService identificacion)
         {
-            _context = context;
+            _catalogo = catalogo;
             _identificacion = identificacion;
         }
 
         // GET: Proveedors
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? nombre, string? documento, string? contacto, int pagina = 1)
         {
-            return View(await _context.Proveedor.AsNoTracking().Include(item => item.Ubigeo).ToListAsync());
+            nombre = NormalizarFiltro(nombre);
+            documento = NormalizarFiltro(documento);
+            contacto = NormalizarFiltro(contacto);
+            var result = await _catalogo.ListarAsync(nombre, documento, contacto, pagina);
+            ViewBag.NombreFiltro = nombre;
+            ViewBag.DocumentoFiltro = documento;
+            ViewBag.ContactoFiltro = contacto;
+            ViewBag.Pagina = result.Pagina;
+            ViewBag.Paginas = result.Paginas;
+            ViewBag.TotalProveedores = result.Total;
+            return View(result.Items);
         }
 
         // GET: Proveedors/Details/5
@@ -38,8 +46,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var proveedor = await _context.Proveedor.Include(item => item.Ubigeo)
-                .FirstOrDefaultAsync(m => m.IdProveedor == id);
+            var proveedor = await _catalogo.ObtenerDetalleAsync(id.Value);
             if (proveedor == null)
             {
                 return NotFound();
@@ -60,13 +67,12 @@ namespace ProyectoFinal.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Nombre,Contacto,Ruc,Direccion,UbigeoCodigo")] Proveedor proveedor)
+        public async Task<IActionResult> Create([Bind("Nombre,Contacto,Ruc,IdDocumentoIdentidadTipo,NumeroDocumento,Direccion,UbigeoCodigo")] Proveedor proveedor)
         {
             await _identificacion.ValidarProveedorAsync(proveedor, null, ModelState);
             if (ModelState.IsValid)
             {
-                _context.Add(proveedor);
-                await _context.SaveChangesAsync();
+                await _catalogo.CrearAsync(proveedor);
                 return RedirectToAction(nameof(Index));
             }
             await _identificacion.CargarCatalogosAsync(this, proveedor.UbigeoCodigo);
@@ -81,7 +87,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var proveedor = await _context.Proveedor.FindAsync(id);
+            var proveedor = await _catalogo.ObtenerAsync(id.Value);
             if (proveedor == null)
             {
                 return NotFound();
@@ -95,30 +101,25 @@ namespace ProyectoFinal.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("IdProveedor,Nombre,Contacto,Ruc,Direccion,UbigeoCodigo")] Proveedor proveedor)
+        public async Task<IActionResult> Edit(int id, [Bind("IdProveedor,Nombre,Contacto,Ruc,IdDocumentoIdentidadTipo,NumeroDocumento,Direccion,UbigeoCodigo")] Proveedor proveedor)
         {
             if (id != proveedor.IdProveedor)
             {
                 return NotFound();
             }
 
-            var existing = await _context.Proveedor.FindAsync(id);
+            var existing = await _catalogo.ObtenerAsync(id);
             if (existing is null) return NotFound();
             await _identificacion.ValidarProveedorAsync(proveedor, id, ModelState);
             if (ModelState.IsValid)
             {
                 try
                 {
-                    existing.Nombre = proveedor.Nombre;
-                    existing.Contacto = proveedor.Contacto;
-                    existing.Ruc = proveedor.Ruc;
-                    existing.Direccion = proveedor.Direccion;
-                    existing.UbigeoCodigo = proveedor.UbigeoCodigo;
-                    await _context.SaveChangesAsync();
+                    await _catalogo.ActualizarAsync(id, proveedor);
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
                 {
-                    if (!ProveedorExists(proveedor.IdProveedor))
+                    if (!await _catalogo.ExisteAsync(proveedor.IdProveedor))
                     {
                         return NotFound();
                     }
@@ -141,8 +142,7 @@ namespace ProyectoFinal.Controllers
                 return NotFound();
             }
 
-            var proveedor = await _context.Proveedor.Include(item => item.Ubigeo)
-                .FirstOrDefaultAsync(m => m.IdProveedor == id);
+            var proveedor = await _catalogo.ObtenerParaEliminarAsync(id.Value);
             if (proveedor == null)
             {
                 return NotFound();
@@ -156,22 +156,17 @@ namespace ProyectoFinal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var proveedor = await _context.Proveedor.FindAsync(id);
-            if (proveedor is null) return NotFound();
-            if (await _context.Producto.AnyAsync(p => p.IdProveedor == id))
+            var outcome = await _catalogo.EliminarAsync(id);
+            if (outcome == ResultadoEliminarCatalogo.NoEncontrado) return NotFound();
+            if (outcome == ResultadoEliminarCatalogo.EnUso)
             {
                 ModelState.AddModelError(string.Empty, "No se puede eliminar un proveedor con productos asociados.");
-                return View("Delete", proveedor);
+                return View("Delete", await _catalogo.ObtenerParaEliminarAsync(id));
             }
-            _context.Proveedor.Remove(proveedor);
-
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ProveedorExists(int id)
-        {
-            return _context.Proveedor.Any(e => e.IdProveedor == id);
-        }
+        private static string? NormalizarFiltro(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

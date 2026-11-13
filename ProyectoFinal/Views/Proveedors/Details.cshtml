@@ -23,11 +23,27 @@
         <dd class = "col-sm-10">
             @Html.DisplayFor(model => model.Contacto)
         </dd>
-        <dt class="col-sm-2">RUC</dt><dd class="col-sm-10">@(Model.Ruc ?? "Pendiente")</dd>
+        <dt class="col-sm-2">Documento</dt><dd class="col-sm-10">@(Model.DocumentoIdentidadTipo?.Abreviatura ?? "Sin documento") @(Model.NumeroDocumento ?? Model.Ruc ?? "")</dd>
         <dt class="col-sm-2">Dirección</dt><dd class="col-sm-10">@(Model.Direccion ?? "Pendiente")</dd>
         <dt class="col-sm-2">Ubigeo</dt><dd class="col-sm-10">@(Model.Ubigeo is null ? "Pendiente" : $"{Model.Ubigeo.Descripcion} ({Model.Ubigeo.Codigo})")</dd>
     </dl>
 </div>
+<section class="analytics-panel analytics-wide" aria-labelledby="productos-proveedor">
+    <div class="analytics-section-heading"><div><span class="folio">CATÁLOGO</span><h2 id="productos-proveedor">Productos asociados</h2></div><span class="analytics-section-note">@Model.Productos.Count asociado(s)</span></div>
+    @if (Model.Productos.Count == 0)
+    {
+        <p class="analytics-empty">No hay productos asociados actualmente a este proveedor.</p>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Producto</th><th scope="col">Tipo</th><th scope="col" class="text-end">Precio de catálogo</th><th scope="col">Detalle</th></tr></thead><tbody>
+        @foreach (var product in Model.Productos)
+        {
+            <tr><th scope="row">@(product.Nombre ?? "Producto sin nombre")</th><td>@(product.EsServicio ? "Servicio" : "Artículo")</td><td class="text-end">@(product.Precio?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("es-PE")) ?? "Sin precio")</td><td><a asp-controller="Productoes" asp-action="Details" asp-route-id="@product.IdProducto">Ver producto</a></td></tr>
+        }
+        </tbody></table></div>
+    }
+</section>
 <div class="page-actions">
     <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model?.IdProveedor">Editar proveedor</a>
     <a class="btn btn-outline-secondary" asp-action="Index">Volver a proveedores</a>

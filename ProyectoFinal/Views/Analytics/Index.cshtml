@@ -1,11 +1,15 @@
 @model ProyectoFinal.Models.AnalyticsDashboardViewModel
 @using System.Globalization
+@using System.Text.Json
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Analítica";
     var peru = CultureInfo.GetCultureInfo("es-PE");
     var sinDatos = ViewData["FiltroInvalido"] is true;
     var maximo = Model.Tendencia.Count == 0 ? 0 : Model.Tendencia.Max(item => item.TotalConIgv);
+    decimal PorcentajeEmbudo(int valor) => Model.CotizacionesEmitidas == 0
+        ? 0m
+        : Math.Round((decimal)valor * 100m / Model.CotizacionesEmitidas, 1);
 }
 
 <header class="analytics-heading">
@@ -20,6 +24,13 @@
     <div><label for="umbralStock">Alerta de stock ≤</label><input class="form-control" type="number" id="umbralStock" name="umbralStock" value="@Model.UmbralStock" min="0" max="1000000" required /></div>
     <button class="btn btn-primary" type="submit">Aplicar filtros</button>
 </form>
+@if (!sinDatos)
+{
+    <div class="page-actions analytics-export-actions" aria-label="Exportar informe">
+        <a class="btn btn-outline-primary" asp-action="ExportarExcel" asp-route-desde="@Model.Desde.ToString("yyyy-MM-dd")" asp-route-hasta="@Model.Hasta.ToString("yyyy-MM-dd")" asp-route-umbralStock="@Model.UmbralStock">Exportar Excel</a>
+        <a class="btn btn-outline-primary" asp-action="ExportarPdf" asp-route-desde="@Model.Desde.ToString("yyyy-MM-dd")" asp-route-hasta="@Model.Hasta.ToString("yyyy-MM-dd")" asp-route-umbralStock="@Model.UmbralStock">Descargar PDF</a>
+    </div>
+}
 <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
 
 @if (!sinDatos)
@@ -58,18 +69,52 @@
             @if (Model.VentasConfirmadas == 0) { <p class="analytics-empty">No hay ventas confirmadas en este periodo.</p> }
             else
             {
+                <p id="ventas-chart-description" class="visually-hidden">Gráfico de barras con las ventas confirmadas con IGV por periodo. Los mismos datos están disponibles en la tabla desplegable.</p>
+                <div class="analytics-chart" data-analytics-chart>
+                    <canvas id="ventas-confirmadas-chart" role="img"
+                            aria-label="Ventas confirmadas con IGV por periodo"
+                            aria-describedby="ventas-chart-description"
+                            data-labels="@JsonSerializer.Serialize(Model.Tendencia.Select(item => item.Etiqueta))"
+                            data-values="@JsonSerializer.Serialize(Model.Tendencia.Select(item => item.TotalConIgv))">
+                        <p>Gráfico no disponible. Consulta la tabla de datos de ventas.</p>
+                    </canvas>
+                </div>
                 <div class="analytics-bars" role="list" aria-label="Evolución de ventas">
                 @foreach (var punto in Model.Tendencia)
                 {
                     <div class="analytics-bar-row" role="listitem"><span>@punto.Etiqueta</span><div class="analytics-bar-track"><span style="width:@(maximo == 0 ? 0 : decimal.Round(punto.TotalConIgv / maximo * 100m, 1).ToString(CultureInfo.InvariantCulture))%"></span></div><strong>@punto.TotalConIgv.ToString("C2", peru)</strong></div>
                 }
                 </div>
+                <details class="analytics-data-table">
+                    <summary>Consultar datos en tabla</summary>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <caption>Ventas confirmadas con IGV por periodo, del @Model.Desde.ToString("dd/MM/yyyy") al @Model.Hasta.ToString("dd/MM/yyyy").</caption>
+                            <thead><tr><th scope="col">Periodo</th><th scope="col" class="text-end">Ventas con IGV</th><th scope="col" class="text-end">N.º de ventas</th></tr></thead>
+                            <tbody>
+                            @foreach (var punto in Model.Tendencia)
+                            {
+                                <tr><th scope="row">@punto.Etiqueta</th><td class="text-end">@punto.TotalConIgv.ToString("C2", peru)</td><td class="text-end">@punto.Ventas</td></tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
             }
         </section>
         <section class="analytics-panel" aria-labelledby="cotizaciones-titulo">
             <div class="analytics-section-heading"><div><span class="folio">02 / COMERCIAL</span><h2 id="cotizaciones-titulo">Cotizaciones</h2></div><span class="analytics-section-note">Por fecha de emisión</span></div>
             <strong class="analytics-inline-metric">@Model.TasaConversionPorcentaje.ToString("N1", peru) % <small>convertidas</small></strong>
             <dl class="analytics-metric-list"><div><dt>Emitidas en el periodo</dt><dd>@Model.CotizacionesEmitidas</dd></div><div><dt>Convertidas</dt><dd>@Model.CotizacionesConvertidas</dd></div><div><dt>Vigentes</dt><dd>@Model.CotizacionesVigentes</dd></div><div><dt>Vencidas</dt><dd>@Model.CotizacionesVencidas</dd></div></dl>
+            @if (Model.CotizacionesEmitidas > 0)
+            {
+                <div class="analytics-bars" id="embudo-conversion" role="list" aria-label="Embudo de conversión comercial">
+                    <div class="analytics-bar-row" role="listitem"><span>Emitidas</span><div class="analytics-bar-track"><span style="width:@PorcentajeEmbudo(Model.CotizacionesEmitidas)%"></span></div><strong>@Model.CotizacionesEmitidas</strong></div>
+                    <div class="analytics-bar-row" role="listitem"><span>Vigentes</span><div class="analytics-bar-track"><span style="width:@PorcentajeEmbudo(Model.CotizacionesVigentes)%"></span></div><strong>@Model.CotizacionesVigentes</strong></div>
+                    <div class="analytics-bar-row" role="listitem"><span>Convertidas</span><div class="analytics-bar-track"><span style="width:@PorcentajeEmbudo(Model.CotizacionesConvertidas)%"></span></div><strong>@Model.CotizacionesConvertidas</strong></div>
+                    <div class="analytics-bar-row" role="listitem"><span>Vencidas</span><div class="analytics-bar-track"><span style="width:@PorcentajeEmbudo(Model.CotizacionesVencidas)%"></span></div><strong>@Model.CotizacionesVencidas</strong></div>
+                </div>
+            }
             <p class="analytics-caption">Tasa de conversión = convertidas / emitidas en el periodo. Una cotización emitida antes puede convertirse en venta durante el periodo seleccionado.</p>
         </section>
     </div>
@@ -80,7 +125,7 @@
         else
         {
             <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Producto / servicio</th><th scope="col" class="text-end">Unidades</th><th scope="col" class="text-end">Ventas con IGV</th><th scope="col" class="text-end">% acumulado</th></tr></thead><tbody>
-            @foreach (var item in Model.Productos) { <tr><th scope="row"><a asp-controller="Productoes" asp-action="Details" asp-route-id="@item.IdProducto">@item.Nombre</a></th><td class="text-end">@item.Unidades</td><td class="text-end">@item.TotalConIgv.ToString("C2", peru)</td><td class="text-end">@item.PorcentajeAcumulado.ToString("N1", peru) %</td></tr> }
+             @foreach (var item in Model.Productos) { <tr><th scope="row"><a asp-controller="Productoes" asp-action="Details" asp-route-id="@item.IdProducto">@item.Nombre</a></th><td class="text-end">@item.Unidades.ToString("0.###", peru)</td><td class="text-end">@item.TotalConIgv.ToString("C2", peru)</td><td class="text-end">@item.PorcentajeAcumulado.ToString("N1", peru) %</td></tr> }
             </tbody></table></div>
         }
         <p class="analytics-caption">El acumulado toma como base todos los productos vendidos en el periodo, no solo los diez visibles.</p>
@@ -88,11 +133,18 @@
 
     <div class="analytics-two-column">
         <section class="analytics-panel" aria-labelledby="clientes-titulo"><div class="analytics-section-heading"><div><span class="folio">04 / CARTERA</span><h2 id="clientes-titulo">Clientes por ventas</h2></div><span class="analytics-section-note">Top 10 · con IGV</span></div>
+        <dl class="analytics-metric-list">
+            <div><dt>Clientes con ventas</dt><dd>@Model.ClientesConVentas</dd></div>
+            <div><dt>Recurrentes (≥ 2 compras)</dt><dd>@Model.ClientesRecurrentes</dd></div>
+            <div><dt>% recurrentes</dt><dd>@Model.PorcentajeClientesRecurrentes.ToString("N1", peru) %</dd></div>
+            <div><dt>Ticket medio recurrente</dt><dd>@(Model.TicketMedioRecurrente?.ToString("C2", peru) ?? "—")</dd></div>
+            <div><dt>Ticket medio nuevo</dt><dd>@(Model.TicketMedioNuevo?.ToString("C2", peru) ?? "—")</dd></div>
+        </dl>
         @if (Model.Clientes.Count == 0) { <p class="analytics-empty">Sin clientes con ventas confirmadas en este periodo.</p> }
-        else { <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Cliente</th><th scope="col" class="text-end">Ventas</th><th scope="col" class="text-end">Total</th><th scope="col" class="text-end">Ticket medio</th><th scope="col" class="text-end">Grupo</th></tr></thead><tbody>
-            @foreach (var item in Model.Clientes) { <tr><th scope="row"><a asp-controller="Clientes" asp-action="Details" asp-route-id="@item.IdCliente">@item.Nombre</a></th><td class="text-end">@item.Ventas</td><td class="text-end">@item.TotalConIgv.ToString("C2", peru)</td><td class="text-end">@item.TicketPromedio.ToString("C2", peru)</td><td class="text-end">@item.Segmento</td></tr> }
+        else { <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Cliente</th><th scope="col" class="text-end">Ventas</th><th scope="col" class="text-end">Total</th><th scope="col" class="text-end">Ticket medio</th><th scope="col" class="text-end">Grupo</th><th scope="col">Recurrencia</th></tr></thead><tbody>
+            @foreach (var item in Model.Clientes) { <tr><th scope="row"><a asp-controller="Clientes" asp-action="Details" asp-route-id="@item.IdCliente">@item.Nombre</a></th><td class="text-end">@item.Ventas</td><td class="text-end">@item.TotalConIgv.ToString("C2", peru)</td><td class="text-end">@item.TicketPromedio.ToString("C2", peru)</td><td class="text-end">@item.Segmento</td><td>@(item.Recurrente ? "Sí" : "No")@if (item.DiasDesdeUltimaCompra is { } dias) { <small class="d-block">hace @dias d</small> }@if (item.FrecuenciaMediaDias is { } frecuencia) { <small class="d-block">cada @frecuencia.ToString("N0", peru) d</small> }</td></tr> }
         </tbody></table></div> }
-        <p class="analytics-caption">Grupos A/B/C según tramo de ingresos acumulados (hasta 80 %, 95 % y resto); no son calificaciones de clientes.</p></section>
+        <p class="analytics-caption">Grupos A/B/C según tramo de ingresos acumulados (hasta 80 %, 95 % y resto); no son calificaciones de clientes. «Recurrente» exige al menos dos ventas confirmadas en el periodo; «hace» y «cada» usan todo el historial del cliente.</p></section>
 
         <section class="analytics-panel" aria-labelledby="taller-titulo"><div class="analytics-section-heading"><div><span class="folio">05 / OPERACIÓN</span><h2 id="taller-titulo">Trabajos de taller</h2></div><span class="analytics-section-note">Estado actual · sin filtro de fecha</span></div>
             <dl class="analytics-metric-list"><div><dt>En cola</dt><dd>@Model.EnCola</dd></div><div><dt>En impresión / acabado</dt><dd>@Model.EnProduccion</dd></div><div><dt>Listos para recojo</dt><dd>@Model.ListosParaRecojo</dd></div><div><dt>Entregados</dt><dd>@Model.Entregados</dd></div><div><dt>Cancelados</dt><dd>@Model.PedidosCancelados</dd></div></dl>
@@ -103,8 +155,15 @@
     <section class="analytics-panel analytics-wide" aria-labelledby="stock-titulo"><div class="analytics-section-heading"><div><span class="folio">06 / INVENTARIO</span><h2 id="stock-titulo">Artículos con stock ≤ @Model.UmbralStock</h2></div><span class="analytics-section-note">Estado actual · máximo 10</span></div>
         @if (Model.AlertasStock.Count == 0) { <p class="analytics-empty">No hay artículos bajo el umbral indicado.</p> }
         else { <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Artículo</th><th scope="col" class="text-end">Existencias</th></tr></thead><tbody>
-            @foreach (var item in Model.AlertasStock) { <tr><th scope="row"><a asp-controller="Productoes" asp-action="Details" asp-route-id="@item.IdProducto">@item.Nombre</a></th><td class="text-end">@item.Existencias</td></tr> }
+            @foreach (var item in Model.AlertasStock) { <tr><th scope="row"><a asp-controller="Productoes" asp-action="Details" asp-route-id="@item.IdProducto">@item.Nombre</a>@if (item.Almacen is not null) { <small class="d-block">@item.Almacen</small> }</th><td class="text-end">@item.Existencias</td></tr> }
         </tbody></table></div> }
         <p class="analytics-caption">Los servicios no llevan existencias. Los estados de taller y de stock son actuales; las ventas y cotizaciones sí usan el filtro de fechas.</p>
     </section>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"
+            integrity="sha384-T/4KgSWuZEPozpPz7rnnp/5lDSnpY1VPJCojf1S81uTHS1E38qgLfMgVsAeRCWc4"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="~/js/analytics-chart.js" asp-append-version="true"></script>
 }

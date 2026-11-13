@@ -1,51 +1,93 @@
-﻿@model ProyectoFinal.Models.Cliente
+@model ProyectoFinal.Models.ClienteFichaComercialViewModel
+@using System.Globalization
 @inject ProyectoFinal.Services.IMenuAccessService MenuAccess
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
-    ViewData["Title"] = "Detalle de cliente";
+    ViewData["Title"] = "Ficha comercial del cliente";
+    var cliente = Model.Cliente;
     var canEdit = await MenuAccess.HasPermissionAsync(User, "clientes", ProyectoFinal.Services.MenuPermissionKind.Edit);
+    var moneda = CultureInfo.GetCultureInfo("es-PE");
 }
 
-<h1>Detalle de cliente</h1>
+<div class="page-heading-row">
+    <div><h1>Ficha comercial</h1><p class="intro">Historial de cotizaciones, ventas y trabajos de @cliente.Nombre.</p></div>
+    <div class="page-actions">
+        @if (canEdit) { <a class="btn btn-primary" asp-action="Edit" asp-route-id="@cliente.IdCliente">Editar cliente</a> }
+        <a class="btn btn-outline-secondary" asp-action="Index">Volver a clientes</a>
+    </div>
+</div>
 
-<div>
-    <h4>Cliente</h4>
-    <hr />
+<section class="form-section" aria-labelledby="datos-cliente">
+    <h2 id="datos-cliente">Datos del cliente</h2>
     <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Nombre)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Nombre)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Correo)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Correo)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Telefono)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Telefono)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Direccion)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Direccion)
-        </dd>
-        <dt class = "col-sm-2">
-            Documento
-        </dt>
-        <dd class = "col-sm-10">
-            @(Model.DocumentoIdentidadTipo?.Abreviatura ?? (Model.Dni is null ? "Sin documento" : "DNI")) @(Model.NumeroDocumento ?? Model.Dni)
-        </dd>
-        <dt class="col-sm-2">Ubigeo</dt><dd class="col-sm-10">@(Model.Ubigeo is null ? "Sin registrar" : $"{Model.Ubigeo.Descripcion} ({Model.Ubigeo.Codigo})")</dd>
+        <dt class="col-sm-2">Nombre / razón social</dt><dd class="col-sm-10">@(cliente.Nombre ?? "Sin nombre")</dd>
+        <dt class="col-sm-2">Documento</dt><dd class="col-sm-10">@(cliente.DocumentoIdentidadTipo?.Abreviatura ?? (cliente.Dni is null ? "Sin documento" : "DNI")) @(cliente.NumeroDocumento ?? cliente.Dni)</dd>
+        <dt class="col-sm-2">Correo</dt><dd class="col-sm-10">@(cliente.Correo ?? "Sin registrar")</dd>
+        <dt class="col-sm-2">Teléfono</dt><dd class="col-sm-10">@(cliente.Telefono ?? "Sin registrar")</dd>
+        <dt class="col-sm-2">Dirección</dt><dd class="col-sm-10">@(cliente.Direccion ?? "Sin registrar")</dd>
+        <dt class="col-sm-2">Ubigeo</dt><dd class="col-sm-10">@(cliente.Ubigeo is null ? "Sin registrar" : $"{cliente.Ubigeo.Descripcion} ({cliente.Ubigeo.Codigo})")</dd>
     </dl>
-</div>
-<div class="page-actions">
-    @if (canEdit) { <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model?.IdCliente">Editar cliente</a> }
-    <a class="btn btn-outline-secondary" asp-action="Index">Volver a clientes</a>
-</div>
+</section>
+
+<section class="analytics-hero" aria-labelledby="resumen-comercial">
+    <div class="analytics-hero-total"><span class="folio">RESUMEN COMERCIAL</span><h2 id="resumen-comercial">Ventas confirmadas con IGV</h2>
+        <strong class="analytics-big-number">@Model.TotalVentasConfirmadasConIgv.ToString("C2", moneda)</strong>
+        <p>@Model.VentasConfirmadas venta(s) confirmada(s). Las ventas canceladas no se incluyen.</p>
+    </div>
+    <dl class="analytics-breakdown">
+        <div><dt>Cotizaciones</dt><dd>@Model.TotalCotizaciones</dd></div>
+        <div><dt>Pedidos de taller</dt><dd>@Model.TotalPedidos</dd></div>
+        <div class="analytics-breakdown-emphasis"><dt>Documento tributario</dt><dd>No aplica</dd></div>
+    </dl>
+</section>
+<p class="auth-footnote">Las ventas registradas son documentos comerciales internos; este resumen no representa facturación tributaria ni comprobantes emitidos a SUNAT.</p>
+
+<section class="analytics-panel analytics-wide" aria-labelledby="cotizaciones-cliente">
+    <div class="analytics-section-heading"><div><span class="folio">HISTORIAL COMERCIAL</span><h2 id="cotizaciones-cliente">Cotizaciones</h2></div><span class="analytics-section-note">@Model.TotalCotizaciones en total</span></div>
+    @if (Model.Cotizaciones.Count == 0)
+    {
+        <p class="analytics-empty">Este cliente aún no tiene cotizaciones.</p>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Número</th><th scope="col">Emisión</th><th scope="col">Vencimiento</th><th scope="col">Estado</th><th scope="col" class="text-end">Total con IGV</th><th scope="col">Detalle</th></tr></thead><tbody>
+        @foreach (var item in Model.Cotizaciones)
+        {
+            <tr><th scope="row">@item.Numero</th><td>@(item.FechaEmision?.ToString("dd/MM/yyyy") ?? "Histórica")</td><td>@(item.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td><td>@item.Estado</td><td class="text-end">@(item.Total?.ToString("C2", moneda) ?? "—")</td><td><a asp-controller="Cotizacions" asp-action="Details" asp-route-id="@item.IdCotizacion">Ver cotización</a></td></tr>
+        }
+        </tbody></table></div>
+        @if (Model.PaginasCotizaciones > 1)
+        {
+            <nav class="page-actions" aria-label="Páginas de cotizaciones">
+                <span>Página @Model.PaginaCotizaciones de @Model.PaginasCotizaciones</span>
+                @if (Model.PaginaCotizaciones > 1) { <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@cliente.IdCliente" asp-route-paginaCotizaciones="@(Model.PaginaCotizaciones - 1)" asp-route-paginaPedidos="@Model.PaginaPedidos">Anterior</a> }
+                @if (Model.PaginaCotizaciones < Model.PaginasCotizaciones) { <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@cliente.IdCliente" asp-route-paginaCotizaciones="@(Model.PaginaCotizaciones + 1)" asp-route-paginaPedidos="@Model.PaginaPedidos">Siguiente</a> }
+            </nav>
+        }
+    }
+</section>
+
+<section class="analytics-panel analytics-wide" aria-labelledby="pedidos-cliente">
+    <div class="analytics-section-heading"><div><span class="folio">PRODUCCIÓN</span><h2 id="pedidos-cliente">Pedidos de taller</h2></div><span class="analytics-section-note">@Model.TotalPedidos en total</span></div>
+    @if (Model.Pedidos.Count == 0)
+    {
+        <p class="analytics-empty">Este cliente aún no tiene pedidos formalizados.</p>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table"><thead><tr><th scope="col">Pedido</th><th scope="col">Venta interna</th><th scope="col">Fecha</th><th scope="col">Estado de taller</th><th scope="col" class="text-end">Total</th><th scope="col">Detalle</th></tr></thead><tbody>
+        @foreach (var item in Model.Pedidos)
+        {
+            <tr><th scope="row">#@item.IdPedido</th><td>@(item.NumeroVenta ?? "Sin venta asociada")</td><td>@(item.FechaPedido?.ToString("dd/MM/yyyy") ?? "Histórico")</td><td>@item.Estado</td><td class="text-end">@(item.Total?.ToString("C2", moneda) ?? "—")</td><td>@if (item.IdVenta is { } saleId) { <a asp-controller="Ventas" asp-action="Details" asp-route-id="@saleId">Ver venta</a> } else { <a asp-controller="Taller" asp-action="Details" asp-route-id="@item.IdPedido">Ver pedido</a> }</td></tr>
+        }
+        </tbody></table></div>
+        @if (Model.PaginasPedidos > 1)
+        {
+            <nav class="page-actions" aria-label="Páginas de pedidos">
+                <span>Página @Model.PaginaPedidos de @Model.PaginasPedidos</span>
+                @if (Model.PaginaPedidos > 1) { <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@cliente.IdCliente" asp-route-paginaCotizaciones="@Model.PaginaCotizaciones" asp-route-paginaPedidos="@(Model.PaginaPedidos - 1)">Anterior</a> }
+                @if (Model.PaginaPedidos < Model.PaginasPedidos) { <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@cliente.IdCliente" asp-route-paginaCotizaciones="@Model.PaginaCotizaciones" asp-route-paginaPedidos="@(Model.PaginaPedidos + 1)">Siguiente</a> }
+            </nav>
+        }
+    }
+</section>

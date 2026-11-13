@@ -1,0 +1,15 @@
+@using System.Globalization
+@model ProyectoFinal.Models.Inventario
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = $"Inventario {Model.Numero}";
+    var peru = CultureInfo.GetCultureInfo("es-PE");
+}
+<div class="page-heading-row"><div><h1>Inventario @Model.Numero</h1><p class="intro">Detalle de los productos incluidos en este corte físico.</p></div><a class="btn btn-outline-secondary" asp-action="Index">Volver a inventario</a></div>
+<dl class="row"><dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">@Model.Fecha.ToString("dd/MM/yyyy")</dd><dt class="col-sm-3">Almacén</dt><dd class="col-sm-9">@Model.Almacen.Nombre</dd><dt class="col-sm-3">Productos contados</dt><dd class="col-sm-9">@Model.Detalles.Count</dd></dl>
+<div class="table-responsive"><table class="table align-middle"><thead><tr><th scope="col">Producto</th><th scope="col">Unidad base</th><th scope="col" class="text-end">Stock antes</th><th scope="col" class="text-end">Cantidad contada</th></tr></thead><tbody>
+@foreach (var line in Model.Detalles.OrderBy(item => item.Producto.Nombre))
+{
+    <tr><th scope="row">@line.Producto.Nombre</th><td>@(line.Producto.UnidadMedidaBase?.Descripcion ?? "Sin unidad base")</td><td class="text-end">@(line.CantidadSistemaBase?.ToString("0.###", peru) ?? "Sin saldo previo")</td><td class="text-end">@line.CantidadContadaBase.ToString("0.###", peru)</td></tr>
+}
+</tbody></table></div>

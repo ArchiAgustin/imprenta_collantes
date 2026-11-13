@@ -15,6 +15,8 @@ namespace ProyectoFinal.Controllers
 
         public IActionResult Index()
         {
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToPage("/Usuario/Panel", new { area = "Identity" });
             return View();
         }
 

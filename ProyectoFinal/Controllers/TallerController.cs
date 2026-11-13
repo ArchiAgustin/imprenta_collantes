@@ -1,36 +1,21 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ProyectoFinal.Data;
 using ProyectoFinal.Models;
 using ProyectoFinal.Services;
 
 namespace ProyectoFinal.Controllers;
 
 [Authorize]
-public class TallerController(ApplicationDbContext context, VentaService ventaService) : Controller
+public class TallerController(ITallerConsultaService consulta, IVentaService ventaService) : Controller
 {
     public async Task<IActionResult> Index()
     {
-        var orders = await context.Pedido.AsNoTracking()
-            .Include(item => item.IdVentaNavigation)
-            .ThenInclude(sale => sale!.Cliente)
-            .Include(item => item.DetallePedidos)
-            .OrderBy(item => item.EstadoPedido == EstadoPedido.EnCola ? 0 : 1)
-            .ThenBy(item => item.FechaPedido)
-            .ThenBy(item => item.IdPedido)
-            .ToListAsync();
-        return View(orders);
+        return View(await consulta.ListarAsync());
     }
 
     public async Task<IActionResult> Details(int id)
     {
-        var order = await context.Pedido.AsNoTracking()
-            .Include(item => item.IdVentaNavigation)
-            .ThenInclude(sale => sale!.Cliente)
-            .Include(item => item.DetallePedidos)
-            .Include(item => item.IdClienteNavigation)
-            .FirstOrDefaultAsync(item => item.IdPedido == id);
+        var order = await consulta.ObtenerAsync(id);
         return order is null ? NotFound() : View(order);
     }
 

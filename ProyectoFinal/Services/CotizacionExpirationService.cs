@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using ProyectoFinal.Data;
 using ProyectoFinal.Models;
@@ -9,22 +10,52 @@ public sealed class CotizacionExpirationService(ApplicationDbContext context)
     public async Task<int> ExpireDueAsync(CancellationToken cancellationToken = default)
     {
         var today = FechaComercial.HoyPeru();
-        var dueQuotes = await context.Cotizacion
+        await using var transaction = context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
+
+        var dueIds = await context.Cotizacion.AsNoTracking()
             .Where(quote => quote.Estado == "Emitida"
                 && quote.FechaVencimiento != null
                 && quote.FechaVencimiento < today)
+            .Select(quote => quote.IdCotizacion)
             .ToListAsync(cancellationToken);
-        if (dueQuotes.Count == 0) return 0;
-
-        foreach (var quote in dueQuotes)
+        if (dueIds.Count == 0)
         {
-            quote.Estado = "Vencida";
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return 0;
+        }
+
+        var expired = 0;
+        foreach (var id in dueIds)
+        {
+            if (transaction is not null)
+            {
+                // Multiple app instances/workers may scan the same expired quote.
+                // Only the process that atomically changes Emitida -> Vencida records it.
+                var changed = await context.Cotizacion
+                    .Where(quote => quote.IdCotizacion == id && quote.Estado == "Emitida"
+                        && quote.FechaVencimiento != null && quote.FechaVencimiento < today)
+                    .ExecuteUpdateAsync(update => update.SetProperty(quote => quote.Estado, "Vencida"), cancellationToken);
+                if (changed != 1) continue;
+            }
+            else
+            {
+                var quote = await context.Cotizacion.FirstOrDefaultAsync(item => item.IdCotizacion == id
+                    && item.Estado == "Emitida" && item.FechaVencimiento != null && item.FechaVencimiento < today,
+                    cancellationToken);
+                if (quote is null) continue;
+                quote.Estado = "Vencida";
+            }
+
             context.AuditoriaOperacion.Add(AuditoriaFactory.CrearSistema(
-                "Cotizacion", quote.IdCotizacion, "Vencimiento automático", "Emitida", "Vencida"));
+                "Cotizacion", id, "Vencimiento automático", "Emitida", "Vencida"));
+            expired++;
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        return dueQuotes.Count;
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        return expired;
     }
 }
 

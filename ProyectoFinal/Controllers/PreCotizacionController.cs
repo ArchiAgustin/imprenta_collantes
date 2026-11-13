@@ -3,15 +3,13 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
-using ProyectoFinal.Data;
 using ProyectoFinal.Models;
 using ProyectoFinal.Services;
 
 namespace ProyectoFinal.Controllers;
 
 [Authorize]
-public sealed class PreCotizacionController(ApplicationDbContext context, ISolicitudExtractor extractor, SugerenciaPrecioService precios) : Controller
+public sealed class PreCotizacionController(IPreCotizacionCatalogoService catalogo, ISolicitudExtractor extractor, SugerenciaPrecioService precios) : Controller
 {
     [HttpGet]
     public IActionResult Index() => View(new PreCotizacionViewModel());
@@ -28,6 +26,11 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
             return View("Index", model);
         }
 
+        var identidad = ProteccionSolicitudService.ExtraerIdentidadLocal(model.Solicitud);
+        model.ClienteNombreSugerido = identidad.Nombre;
+        model.ClienteDocumentoTipoSugerido = identidad.CodigoDocumento;
+        model.ClienteDocumentoNumeroSugerido = identidad.NumeroDocumento;
+        model.ConfirmarIdentidadLocal = false;
         model.TextoRevisado = ProteccionSolicitudService.Anonimizar(model.Solicitud);
         model.Solicitud = null; // Never forward or embed the unredacted message in the next step.
         ModelState.Clear();
@@ -46,6 +49,27 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
         model.Analizada = false;
         model.Lineas = new();
         model.Solicitud = null;
+        if (!model.ConfirmarIdentidadLocal)
+        {
+            model.ClienteNombreSugerido = null;
+            model.ClienteDocumentoTipoSugerido = null;
+            model.ClienteDocumentoNumeroSugerido = null;
+            model.ClienteIdSugerido = null;
+        }
+        else
+        {
+            model.ClienteNombreSugerido = model.ClienteNombreSugerido?.Trim();
+            model.ClienteDocumentoNumeroSugerido = model.ClienteDocumentoNumeroSugerido?.Trim();
+            if (string.IsNullOrWhiteSpace(model.ClienteNombreSugerido) && string.IsNullOrWhiteSpace(model.ClienteDocumentoNumeroSugerido))
+                ModelState.AddModelError(nameof(model.ConfirmarIdentidadLocal), "No hay datos de identidad detectados para confirmar.");
+            if (model.ClienteDocumentoTipoSugerido is { } codigo)
+            {
+                var longitud = codigo == "1" ? 8 : codigo == "6" ? 11 : 0;
+                if (longitud == 0 || model.ClienteDocumentoNumeroSugerido is null
+                    || !System.Text.RegularExpressions.Regex.IsMatch(model.ClienteDocumentoNumeroSugerido, $@"^[0-9]{{{longitud}}}$"))
+                    ModelState.AddModelError(nameof(model.ClienteDocumentoNumeroSugerido), "El documento detectado no tiene un formato DNI/RUC válido.");
+            }
+        }
         if (string.IsNullOrWhiteSpace(model.TextoRevisado) || model.TextoRevisado.Length is < 10 or > 4000)
             ModelState.AddModelError(nameof(model.TextoRevisado), "Revisa un texto de entre 10 y 4000 caracteres.");
         if (!model.TextoAprobado)
@@ -92,11 +116,22 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
 
         foreach (var line in model.Lineas)
         {
-            // Exact unique name only: similar or ambiguous names require human selection.
-            var matches = model.Productos.Where(product => string.Equals(
+            var exactMatches = model.Productos.Where(product => string.Equals(
                 Normalizar(product.Nombre), Normalizar(line.NombreSugerido), StringComparison.Ordinal)).ToList();
-            if (matches.Count == 1) line.ProductoId = matches[0].IdProducto;
+            line.Candidatos = BuscarCandidatos(line.NombreSugerido, model.Productos);
+            // Only a single exact product-name match may be preselected. Similar or
+            // duplicate names remain suggestions for the seller to resolve.
+            if (exactMatches.Count == 1)
+            {
+                var exact = exactMatches[0];
+                line.ProductoId = exact.IdProducto;
+                line.IdPresentacionProducto = exact.EsServicio ? null : exact.Presentaciones.FirstOrDefault(item =>
+                    item.IdUnidadMedida == exact.IdUnidadMedidaBase && item.Factor == 1m)?.IdPresentacionProducto;
+            }
         }
+        if (model.ClienteId is null && model.ClienteIdSugerido is { } match
+            && model.Clientes.Any(client => client.IdCliente == match))
+            model.ClienteId = match;
         ModelState.Clear();
         model.Aviso = "Ninguna sugerencia crea una cotización. Selecciona el cliente, confirma los productos y revisa los precios en el siguiente formulario.";
         return View("Index", model);
@@ -111,6 +146,8 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
         model.TextoRevisado = null;
         model.Lineas ??= new();
         await CargarCatalogoAsync(model);
+        foreach (var line in model.Lineas)
+            line.Candidatos = BuscarCandidatos(line.NombreSugerido, model.Productos);
 
         if (model.ClienteId is null || !model.Clientes.Any(client => client.IdCliente == model.ClienteId))
             ModelState.AddModelError(nameof(model.ClienteId), "Selecciona un cliente registrado.");
@@ -121,8 +158,15 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
             for (var index = 0; index < model.Lineas.Count; index++)
             {
                 var line = model.Lineas[index];
-                if (line.ProductoId is null || !model.Productos.Any(product => product.IdProducto == line.ProductoId))
+                var selectedProduct = line.ProductoId is null
+                    ? null
+                    : model.Productos.FirstOrDefault(product => product.IdProducto == line.ProductoId);
+                if (selectedProduct is null)
                     ModelState.AddModelError($"Lineas[{index}].ProductoId", "Selecciona un producto del catálogo.");
+                else if (selectedProduct.EsServicio && line.IdPresentacionProducto is not null
+                    || !selectedProduct.EsServicio && line.IdPresentacionProducto is { } selectedPresentation
+                        && !selectedProduct.Presentaciones.Any(presentation => presentation.IdPresentacionProducto == selectedPresentation))
+                    ModelState.AddModelError($"Lineas[{index}].IdPresentacionProducto", "Selecciona una presentación activa del producto.");
                 if (line.Cantidad is < 1 or > 1_000_000)
                     ModelState.AddModelError($"Lineas[{index}].Cantidad", "La cantidad debe estar entre 1 y 1 000 000.");
             }
@@ -138,11 +182,25 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
             Usuario = User.Identity?.Name ?? string.Empty,
             Clientes = model.Clientes,
             Productos = model.Productos,
-            Lineas = model.Lineas.Select(line => new CotizacionLineaInputViewModel
+            Lineas = model.Lineas.Select(line =>
             {
-                ProductoId = line.ProductoId,
-                Cantidad = line.Cantidad,
-                PrecioUnitario = model.Productos.Single(product => product.IdProducto == line.ProductoId).Precio ?? 0m
+                var product = model.Productos.Single(item => item.IdProducto == line.ProductoId);
+                var presentation = product.EsServicio ? null
+                    : line.IdPresentacionProducto is { } selectedId
+                        ? product.Presentaciones.FirstOrDefault(item => item.IdPresentacionProducto == selectedId)
+                        : product.Presentaciones.FirstOrDefault(item => item.IdUnidadMedida == product.IdUnidadMedidaBase && item.Factor == 1m);
+                var factor = presentation?.Factor ?? 1m;
+                return new CotizacionLineaInputViewModel
+                {
+                    ProductoId = line.ProductoId,
+                    IdPresentacionProducto = presentation?.IdPresentacionProducto,
+                    FactorPresentacion = factor,
+                    PresentacionDescripcion = product.EsServicio ? "Servicio"
+                        : presentation?.Descripcion ?? product.UnidadMedidaBase?.DescripcionCorta ?? product.UnidadMedidaBase?.Descripcion ?? "Unidad base",
+                    UnidadBaseDescripcion = product.UnidadMedidaBase?.Descripcion,
+                    Cantidad = line.Cantidad,
+                    PrecioUnitario = (product.Precio ?? 0m) * factor
+                };
             }).ToList()
         };
         quote.RecalcularTotales();
@@ -154,8 +212,48 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
 
     private async Task CargarCatalogoAsync(PreCotizacionViewModel model)
     {
-        model.Clientes = await context.Cliente.AsNoTracking().OrderBy(client => client.Nombre).ToListAsync();
-        model.Productos = await context.Producto.AsNoTracking().OrderBy(product => product.Nombre).ToListAsync();
+        await catalogo.CargarAsync(model);
+    }
+
+    private static List<PreCotizacionProductoCandidato> BuscarCandidatos(
+        string? nombre,
+        IReadOnlyCollection<Producto> productos)
+    {
+        var tokens = Normalizar(nombre).Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+        if (tokens.Count == 0) return new();
+        return productos.Select(product =>
+            {
+                var nombreNormalizado = Normalizar(product.Nombre);
+                var descripcionNormalizada = Normalizar(product.Descripcion);
+                var nombreTokens = nombreNormalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+                var descripcionTokens = descripcionNormalizada.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+                var nombreExacto = nombreNormalizado == Normalizar(nombre);
+                var nombreCoincide = tokens.Intersect(nombreTokens, StringComparer.Ordinal).Count();
+                var descripcionCoincide = tokens.Intersect(descripcionTokens, StringComparer.Ordinal).Count();
+                var coincidencias = Math.Max(nombreCoincide, descripcionCoincide);
+                var razon = nombreExacto ? "Coincidencia exacta por nombre"
+                    : nombreCoincide > 0 ? "Coincidencia por términos del nombre"
+                    : "Coincidencia por términos de la descripción";
+                return new
+                {
+                    Producto = product,
+                    Exacto = nombreExacto,
+                    Coincidencias = coincidencias,
+                    Razon = razon
+                };
+            })
+            .Where(item => item.Exacto || item.Coincidencias > 0
+                && (decimal)item.Coincidencias / tokens.Count >= .5m)
+            .OrderByDescending(item => item.Exacto)
+            .ThenByDescending(item => item.Coincidencias)
+            .ThenBy(item => item.Producto.Nombre)
+            .Take(5)
+            .Select(item => new PreCotizacionProductoCandidato(
+                item.Producto.IdProducto,
+                $"{(item.Producto.EsServicio ? "Servicio" : "Artículo")} · {item.Producto.Nombre}",
+                item.Producto.EsServicio ? "Servicio" : "Artículo",
+                item.Razon))
+            .ToList();
     }
 
     private static string Normalizar(string? name)
@@ -163,9 +261,21 @@ public sealed class PreCotizacionController(ApplicationDbContext context, ISolic
         if (string.IsNullOrWhiteSpace(name)) return string.Empty;
         var normalized = name.Trim().Normalize(NormalizationForm.FormD);
         var buffer = new StringBuilder();
+        var previousWasSpace = true;
         foreach (var character in normalized)
-            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark) continue;
+            if (char.IsLetterOrDigit(character))
+            {
                 buffer.Append(char.ToUpperInvariant(character));
+                previousWasSpace = false;
+            }
+            else if (!previousWasSpace)
+            {
+                buffer.Append(' ');
+                previousWasSpace = true;
+            }
+        }
         return buffer.ToString().Normalize(NormalizationForm.FormC);
     }
 }

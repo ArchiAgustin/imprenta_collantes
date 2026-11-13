@@ -32,6 +32,18 @@ public partial class DetallePedido
     [Column("esServicio")]
     public bool EsServicio { get; set; }
 
+    [Column("idPresentacionProducto")]
+    public int? IdPresentacionProducto { get; set; }
+
+    [Column("factorPresentacion", TypeName = "decimal(12,3)")]
+    public decimal FactorPresentacion { get; set; } = 1m;
+
+    [Column("presentacionDescripcion"), StringLength(100)]
+    public string? PresentacionDescripcion { get; set; }
+
+    [Column("unidadBaseDescripcion"), StringLength(100)]
+    public string? UnidadBaseDescripcion { get; set; }
+
     [ForeignKey("IdPedido")]
     [InverseProperty("DetallePedidos")]
     public virtual Pedido? IdPedidoNavigation { get; set; }
@@ -39,4 +51,7 @@ public partial class DetallePedido
     [ForeignKey("IdProducto")]
     [InverseProperty("DetallePedidos")]
     public virtual Producto? IdProductoNavigation { get; set; }
+
+    [ForeignKey(nameof(IdPresentacionProducto))]
+    public PresentacionProducto? Presentacion { get; set; }
 }

@@ -22,6 +22,21 @@ public class GroqSolicitudExtractorTests
     }
 
     [Fact]
+    public void CustomerIdentityCandidateIsExtractedLocallyAndNeverAddedBackToGroqText()
+    {
+        var request = "Cliente: Acme SAC; RUC: 20123456789; necesito 300 volantes A5";
+        var candidate = ProteccionSolicitudService.ExtraerIdentidadLocal(request);
+        var redacted = ProteccionSolicitudService.Anonimizar(request);
+
+        Assert.Equal("Acme SAC", candidate.Nombre);
+        Assert.Equal("6", candidate.CodigoDocumento);
+        Assert.Equal("20123456789", candidate.NumeroDocumento);
+        Assert.DoesNotContain(candidate.Nombre!, redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain(candidate.NumeroDocumento!, redacted, StringComparison.Ordinal);
+        Assert.Contains("300 volantes", redacted);
+    }
+
+    [Fact]
     public async Task MissingKeyAndIdentifiableTextFailClosed()
     {
         var handler = new CaptureHandler();

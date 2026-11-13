@@ -1,0 +1,15 @@
+@model ProyectoFinal.Models.AlmacenFormViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    var nuevo = Model.IdAlmacen is null;
+    ViewData["Title"] = nuevo ? "Nuevo almacén" : "Editar almacén";
+}
+<h1>@ViewData["Title"]</h1>
+<p class="intro">No asocies este registro a una sede. Cada almacén requiere un corte inicial antes de operar.</p>
+<form asp-action="Guardar" method="post" class="series-editor">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <input type="hidden" asp-for="IdAlmacen" />
+    @if (!nuevo) { <input type="hidden" asp-for="Activo" /> }
+    <div class="form-group"><label asp-for="Nombre">Nombre del almacén</label>@if (Model.EsPredeterminado) { <input asp-for="Nombre" class="form-control" readonly /> } else { <input asp-for="Nombre" class="form-control" maxlength="150" required /> }<span asp-validation-for="Nombre" class="text-danger"></span></div>
+    <div class="page-actions"><button class="btn btn-primary" type="submit">Guardar</button><a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a></div>
+</form>

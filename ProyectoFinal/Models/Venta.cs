@@ -43,6 +43,13 @@ public class Venta
     [Column("idCotizacion")]
     public int IdCotizacion { get; set; }
 
+    // Historical sales remain null; new confirmations record the selected warehouse.
+    [Column("idAlmacen")]
+    public int? IdAlmacen { get; set; }
+
+    [Column("almacenNombreEmision"), StringLength(150)]
+    public string? AlmacenNombreEmision { get; set; }
+
     [Column("idCliente")]
     public int IdCliente { get; set; }
 
@@ -70,6 +77,9 @@ public class Venta
     public virtual IdentityUser? Usuario { get; set; }
 
     public virtual Pedido? Pedido { get; set; }
+
+    [ForeignKey(nameof(IdAlmacen))]
+    public virtual Almacen? Almacen { get; set; }
 
     public virtual ICollection<DetalleVenta> Detalles { get; set; } = new List<DetalleVenta>();
 }

@@ -1,7 +1,7 @@
 @model ProyectoFinal.Models.Proveedor
 @{ Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml"; ViewData["Title"] = "Nuevo proveedor"; }
 <h1>Nuevo proveedor</h1>
-<p class="intro">Registra el RUC, la dirección y el distrito del proveedor.</p>
+<p class="intro">Registra su documento de identidad, dirección y distrito.</p>
 <form asp-action="Create" method="post" class="identity-form">
     <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
     <partial name="_ProveedorFormFields" model="Model" />

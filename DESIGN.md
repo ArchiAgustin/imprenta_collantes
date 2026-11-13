@@ -13,7 +13,7 @@ colors:
 typography:
   display:
     fontFamily: "Barlow Condensed, Arial Narrow, sans-serif"
-    fontSize: "clamp(2.7rem, 5vw, 4.8rem)"
+    fontSize: "clamp(2.1rem, 3.3vw, 3.1rem)"
     fontWeight: 700
     lineHeight: 1.05
   body:
@@ -55,11 +55,11 @@ An indexed working archive, not a marketing dashboard. Navigation identifies the
 
 ## Typography
 
-Self-hosted Barlow Condensed 500/700 supplies headings and the brand; body copy uses the system UI stack. Keep body text readable in tables and forms, with small labels reserved for index navigation.
+Self-hosted Barlow Condensed 500/700 supplies compact headings and the brand; body copy uses the system UI stack. The main reading size remains 1rem, while headings, introductions, module cards and analytical figures use a quieter scale. Keep body text readable in tables and forms, with small labels reserved for index navigation.
 
 ## Layout
 
-Desktop uses a 220–250px dark navigation rail and a flexible working sheet. Below 992px, navigation becomes a labeled collapse control; below 576px, module entries stack and wide tables scroll inside their container.
+Desktop uses a 290px dark navigation rail and a flexible working sheet. Menu labels stay on one line and truncate with an ellipsis when necessary; the full label remains in the markup and as a title. Below 992px, navigation becomes a labeled collapse control; below 576px, module entries stack and wide tables scroll inside their container.
 
 ## Elevation & Depth
 

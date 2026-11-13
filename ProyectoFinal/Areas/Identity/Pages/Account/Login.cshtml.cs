@@ -158,15 +158,11 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
         private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<IdentityUser> signInManager,
-                          UserManager<IdentityUser> userManager,
-                          ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
-            _userManager = userManager;
             _logger = logger;
         }
 
@@ -224,17 +220,9 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
                 {
                     _logger.LogInformation("User logged in.");
 
-                    var user = await _userManager.FindByEmailAsync(Input.Email);
-
-                    if (user != null && (await _userManager.GetRolesAsync(user)).Count > 0)
-                    {
-                        if (returnUrl == Url.Content("~/"))
-                            return RedirectToPage("/Usuario/Panel");
-                        return LocalRedirect(returnUrl);
-                    }
-
-                    // Newly registered accounts cannot access the administration area.
-                    return RedirectToAction("Index", "Home", new { area = "" });
+                    if (returnUrl == Url.Content("~/"))
+                        return RedirectToPage("/Usuario/Panel");
+                    return LocalRedirect(returnUrl);
                 }
 
                 if (result.RequiresTwoFactor)

@@ -1,11 +1,11 @@
 ### 1. Estado de las historias de usuario
 
-Los porcentajes son una estimación del alcance implementado, no una métrica automática. “TERMINADO” se refiere al flujo implementado de punta a punta en el código y pruebas disponibles; la conexión con la base SQL Server local no estuvo disponible durante esta revisión.
+Los porcentajes son una estimación del alcance implementado, no una métrica automática. “TERMINADO” se refiere al flujo implementado de punta a punta en el código y pruebas disponibles. Actualizado el 03/11/2026 tras aplicar el árbol de menús y el módulo de catálogos SUNAT en la base local.
 
 | HU | Historia | Estado | % avance | Evidencia en el código | Ruta/URL de la pantalla |
 |---|---|---:|---:|---|---|
 | HU01 | Iniciar sesión | TERMINADO | 100 % | `Areas/Identity/Pages/Account/Login.cshtml(.cs)`, `Program.cs` (Identity y autenticación), `ProyectoFinal.Tests/NavigationTests.cs` | `/Identity/Account/Login` |
-| HU02 | Gestionar usuarios y roles (Admin, Vendedor, Operador) | EN PROGRESO | 75 % | `Controllers/AdminController.cs`, `Controllers/RolesController.cs`, `Controllers/PermisosController.cs`, `Services/MenuAccessService.cs`; roles creados por administrador y matriz de permisos. | `/Admin`, `/Admin/AssignRole?userId={id}`, `/Roles`, `/Permisos` |
+| HU02 | Gestionar usuarios y roles (Admin, Vendedor, Operador) | TERMINADO | 100 % | `Controllers/AdminController.cs`, `Controllers/RolesController.cs`, `Controllers/PermisosController.cs`, `Services/ActiveRoleMiddleware.cs`; creación administrativa, asignación, rol activo por sesión y permisos jerárquicos. | `/Admin`, `/Admin/CrearUsuario`, `/Admin/AssignRole?userId={id}`, `/Roles`, `/Permisos` |
 | HU03 | Consultar bitácora de auditoría | EN PROGRESO | 75 % | `Controllers/AuditoriaController.cs`, `Views/Auditoria/Index.cshtml`, `Models/AuditoriaOperacion.cs`, `Services/AuditoriaFactory.cs` | `/Auditoria` |
 | HU04 | Registrar clientes con validación de DNI/RUC | EN PROGRESO | 85 % | `Controllers/ClientesController.cs`, `Services/IdentificacionService.cs`, `Models/DocumentoIdentidadTipo.cs`; valida longitudes, unicidad y ubigeo. No se encontró consulta de autenticidad a RENIEC/SUNAT. | `/Clientes/Create` |
 | HU05 | Ver historial del cliente (cotizaciones y pedidos) | NO INICIADO | 0 % | `Views/Clientes/Details.cshtml` muestra datos del cliente, no su historial comercial. | `/Clientes/Details/{id}` (detalle; historial NO ENCONTRADO) |
@@ -24,6 +24,9 @@ Los porcentajes son una estimación del alcance implementado, no una métrica au
 | HU18 | Revalidar cotizaciones vencidas conservando la original | TERMINADO | 100 % | `Controllers/CotizacionsController.cs`, `Services/CotizacionExpirationService.cs`; genera una cotización nueva enlazada tras revisión, con vigencia predeterminada de 7 días. | `/Cotizacions/Details/{id}` → “Revisar y emitir nueva” |
 | HU19 | Configurar series y correlativos de cotizaciones y ventas internas | TERMINADO | 100 % | `Controllers/SeriesInternasController.cs`, `Services/SerieDocumentoInternoService.cs`, `Models/SerieDocumentoInterno.cs`; migración `20261030194836_ConfigurableInternalSeries`. La configuración local registrada fue C001 y V001 desde 4532. | `/SeriesInternas` |
 | HU20 | Imprimir documentos comerciales internos A4 | TERMINADO | 100 % | `Views/Cotizacions/Imprimir.cshtml`, `Views/Ventas/Imprimir.cshtml`, `wwwroot/css/print-document.css`. Indican que no son comprobantes tributarios ni emitidos a SUNAT. | `/Cotizacions/Imprimir/{id}`, `/Ventas/Imprimir/{id}` |
+| HU21 | Crear, asignar y desactivar usuarios desde administración | TERMINADO | 100 % | `Controllers/AdminController.cs`, `Views/Admin/CrearUsuario.cshtml`, `Services/ActiveRoleMiddleware.cs`; registro público bloqueado, usuarios nuevos sin roles y sesiones invalidadas al desactivar. | `/Admin`, `/Admin/CrearUsuario` |
+| HU22 | Administrar menús con hijos/subhijos y accesos independientes por rol | TERMINADO | 100 % | `Controllers/MenusController.cs`, `Views/Menus/*`, `Controllers/PermisosController.cs`, `Services/MenuAccessService.cs`; máximo tres niveles, destinos allow-listed, validación de ciclos y no herencia de permisos. Migración aplicada localmente. | `/Menus`, `/Menus/Create`, `/Menus/Edit/{id}`, `/Permisos/Editar/{roleId}` |
+| HU23 | Consultar catálogos SUNAT con gestión acotada | TERMINADO | 100 % | `Controllers/CatalogosSunatController.cs`, `Services/CatalogoSunatService.cs`, `Services/CatalogoSunatRegistry.cs`, `Models/CatalogosSunat.cs`; 14 tablas fuente importadas, paginación, permisos Ver/Procesar y auditoría. No emite CPE. | `/CatalogosSunat` y sus 17 submenús |
 
 ### 2. Pantallas existentes
 
@@ -36,7 +39,7 @@ Se enumeran las vistas navegables encontradas bajo `Views/` y las páginas Razor
 | Acceso / Identity | `/Identity/Account/Login`, `/Register`, `/Logout`, `/AccessDenied`, `/Lockout`, `/ForgotPassword`, `/ForgotPasswordConfirmation`, `/ResetPassword`, `/ResetPasswordConfirmation`, `/RegisterConfirmation`, `/ResendEmailConfirmation`, `/ConfirmEmail`, `/ConfirmEmailChange`, `/ExternalLogin`, `/LoginWith2fa`, `/LoginWithRecoveryCode` | Páginas incluidas por Identity y sus vistas locales. Envío real de correo no configurado. |
 | Administración de cuenta Identity | `/Identity/Account/Manage/Index`, `/Email`, `/ChangePassword`, `/SetPassword`, `/ExternalLogins`, `/TwoFactorAuthentication`, `/EnableAuthenticator`, `/Disable2fa`, `/ResetAuthenticator`, `/ShowRecoveryCodes`, `/GenerateRecoveryCodes`, `/PersonalData`, `/DownloadPersonalData`, `/DeletePersonalData` | Páginas Identity presentes; requieren sesión. |
 | Roles heredados de Identity | `/Identity/Account/Manage/IndexRole`, `/CreateRole`, `/EditRole`, `/AsignarRoles` | Archivos Razor presentes; algunos handlers redirigen al módulo MVC `/Roles`. No son el flujo administrativo principal. |
-| Usuarios | `/Admin`, `/Admin/AssignRole?userId={id}` | Vistas `Index` y `AssignRole`; Admin requerido. `/Admin/CreateRole` redirige a `/Roles`. |
+| Usuarios | `/Admin`, `/Admin/CrearUsuario`, `/Admin/AssignRole?userId={id}` | Vistas presentes; Admin activo requerido. Nuevas cuentas nacen sin roles. `/Identity/Account/Register` exige Admin, no es registro público. |
 | Roles | `/Roles`, `/Roles/Create`, `/Roles/Edit/{id}` | Vistas presentes; Admin requerido. El borrado es acción POST desde la lista, no una página separada. |
 | Permisos por rol | `/Permisos`, `/Permisos/Editar/{roleId}` | Vistas presentes; Admin requerido. |
 | Auditoría | `/Auditoria` (filtros opcionales `tipoEntidad` e `idEntidad`) | Vista presente; Admin requerido; lista como máximo 500 eventos. |
@@ -50,9 +53,12 @@ Se enumeran las vistas navegables encontradas bajo `Views/` y las páginas Razor
 | Taller | `/Taller`, `/Taller/Details/{id}` | Vistas presentes; requiere sesión/permisos. Cambio de estado es POST. |
 | Analítica | `/Analytics` | Vista presente; Admin requerido. |
 | Series internas | `/SeriesInternas`, `/SeriesInternas/Create`, `/SeriesInternas/Edit/{id}` | Vistas presentes; Admin requerido. Crear/editar comparten `Editar.cshtml`. |
+| Menús del sistema | `/Menus`, `/Menus/Create`, `/Menus/Edit/{id}` | CRUD jerárquico presente; Admin requerido. Solo enlaza destinos registrados por la aplicación. La migración está aplicada localmente. |
+| Catálogos SUNAT | `/CatalogosSunat`, `/CatalogosSunat/{acción}` | Consulta paginada por submenú; requiere permiso Ver. Activar/desactivar requiere Procesar. Cambios auditados. No genera ni envía comprobantes. |
+| Selección de rol | POST `/RoleSelection/Cambiar` | Acción sin vista propia; guarda el rol activo en sesión y valida pertenencia desde el servidor. |
 | Ubigeo | `/Ubigeos` (consulta usada por formularios) | Endpoint JSON, no tiene vista propia. |
 
-Las vistas parciales y layouts (`Views/Shared/*`, `_PanelLayout.cshtml`, `_PrintLayout.cshtml`, parciales de formularios y validación) son componentes reutilizados, no pantallas independientes. Las vistas MVC existen en el árbol; en esta revisión no fue posible probar todas con una base SQL activa.
+Las vistas parciales y layouts (`Views/Shared/*`, `_PanelLayout.cshtml`, `_PrintLayout.cshtml`, parciales de formularios y validación) son componentes reutilizados, no pantallas independientes. No se hizo un recorrido visual de todas las rutas en navegador; los flujos nuevos se probaron con HTTP y SQL Server temporal.
 
 ### 3. Historial de trabajo según Git
 
@@ -76,7 +82,7 @@ Hay artefactos con fecha `20250508014140_InitialCreate` y modelos/contextos scaf
 
 ### 4. Base de datos
 
-El único contexto registrado es `Data/ApplicationDbContext.cs`; usa SQL Server según `Program.cs` y `appsettings.json`. Sus DbSet son: `Cliente`, `Proveedor`, `Producto`, `Cotizacion`, `DetalleCotizacion`, `Venta`, `DetalleVenta`, `Pedido`, `DetallePedido`, `AuditoriaOperacion`, `MenuSistema`, `PermisoRolMenu`, `Ubigeos`, `DocumentoIdentidadTipos`, `UnidadesMedida`, `PresentacionesProducto`, `Almacenes`, `SaldosAlmacen`, `CortesInventario`, `DetallesCorteInventario`, `Kardex` y `SeriesDocumentoInterno`. Identity añade sus tablas estándar de usuarios, roles, claims, logins y tokens.
+El único contexto registrado es `Data/ApplicationDbContext.cs`; usa SQL Server según `Program.cs` y `appsettings.json`. Los DbSet de catálogos SUNAT incorporados son `TiposDocumentoPagoSunat`, `MonedasSunat`, `DetraccionesSunat`, `TiposMedioPagoSunat`, `MotivosNotaCreditoSunat`, `MotivosNotaDebitoSunat`, `MotivosTrasladoSunat`, `TiposEntidadFinancieraSunat`, `EntidadesFinancierasSunat`, `TiposActividadSunat`, `TiposContribuyenteSunat`, `TiposViaSunat`, `TiposZonaSunat` y `EstadosEnvioSunat`. Se reutilizan `DocumentoIdentidadTipos`, `UnidadesMedida` y `Ubigeos` existentes.
 
 | Migración del repositorio | Fecha del ID | Alcance resumido |
 |---|---|---|
@@ -93,19 +99,23 @@ El único contexto registrado es `Data/ApplicationDbContext.cs`; usa SQL Server 
 | `20261030191601_InternalCommercialDocuments` | 2026-10-30 | Documentos comerciales internos y snapshots de venta. |
 | `20261030192147_QuotationPrintSnapshots` | 2026-10-30 | Snapshots de impresión de cotizaciones. |
 | `20261030194836_ConfigurableInternalSeries` | 2026-10-30 | Series configurables y ancho de correlativo. |
+| `20261103090000_HierarchicalMenusAndActiveRoles` | 2026-11-03 | Árbol de menús, destinos seguros, agrupación de módulos y permiso independiente para pre-cotización. |
+| `20261103110000_SunatReferenceCatalogs` | 2026-11-03 | 14 tablas de catálogos importados y menús Catálogos SUNAT. |
 
-El historial de ejecución registrado en la sesión previa confirmó la base local `imprentacollantesbd` hasta `20261030194836_ConfigurableInternalSeries`, con respaldo verificado antes de aplicarla. **No se pudo reconfirmar el estado actual**: durante esta revisión SQL Server en `Server=.` no aceptó conexión. Por tanto, la fecha/estado arriba refleja la última evidencia disponible, no una consulta live de hoy.
+La base local `imprentacollantesbd` registra como última migración `20261103110000_SunatReferenceCatalogs`. Antes de aplicarla se creó y verificó `C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER\MSSQL\Backup\imprentacollantesbd_pre_sunat_catalogs_20261103_225846.bak`. Se importaron 885 filas desde la copia local MySQL `kipu`; se conciliaron sin duplicar los 6 tipos de documento, 64 unidades y 2 088 ubigeos existentes. Los recuentos y la relación de las 82 entidades financieras con sus 9 tipos se verificaron después.
 
 ### 5. Pendientes y problemas conocidos
 
-- **Pruebas actuales:** `dotnet test ProyectoFinal.Tests/ProyectoFinal.Tests.csproj --no-restore` compiló y ejecutó 33 pruebas: **31 pasaron y 2 fallaron**. Ambas fallas están en expectativas de fecha UTC, mientras el sistema calcula la fecha comercial en Perú (`FechaComercial.HoyPeru()`): `AdminCanCreateCustomerAndQuotationWithServerOwnedAuditFields` compara `FechaCreacion` con `DateTime.UtcNow`; `SellerConfirmationCreatesSaleAndWorkAtomicallyAndCancellationRestoresItemStock` crea una cotización vencida respecto de UTC y espera que ya esté vencida en Perú. Las aserciones deberían usar el reloj/fecha comercial del dominio.
-- Las pruebas SQL Server son opt-in mediante `PROYECTOFINAL_SQL_TEST_CONNECTION`; sin esa variable no ejercitan SQL real. La conexión local también falló durante esta revisión, así que no se verificaron rutas contra la base actual.
+- **Pruebas:** `dotnet test ProyectoFinal.Tests/ProyectoFinal.Tests.csproj` compiló y pasó **39/39 pruebas**, incluyendo tests opt-in con SQL Server real que migran una base temporal y prueban flujos concurrentes y permisos SUNAT.
+- Las pruebas SQL Server son opt-in mediante `PROYECTOFINAL_SQL_TEST_CONNECTION`; se ejecutaron con una conexión local y aprobaron los flujos SQL en bases temporales. En `imprentacollantesbd` se verificaron la última migración y los recuentos importados.
 - La IA requiere configurar `Groq:ApiKey` (por secret o variable de configuración) y conectividad con Groq. No se confirmó una llamada real al proveedor en esta revisión. Hay pruebas con extractor simulado.
 - El correo está sustituido por `FakeEmailSender`; envío real de cotizaciones: **NO ENCONTRADO**.
+- El módulo de catálogos es de consulta y activación acotada; altas/ediciones de códigos normativos se hacen mediante una nueva importación revisada, no con CRUD libre.
 - No se encontró historial comercial en la ficha del cliente, exportación Excel/PDF ni generador PDF de servidor. La impresión actual es HTML con estilos de impresión del navegador.
 - DNI/RUC se validan por tipo, cantidad de dígitos, unicidad y datos requeridos; verificación de validez oficial contra RENIEC/SUNAT: **NO ENCONTRADO**.
 - Hay código `NotSupportedException` en ramas de Identity predeterminado para almacenamiento de email (`Register.cshtml.cs`, `ExternalLogin.cshtml.cs`); se registra un sender simulado, no un proveedor de correo.
 - Búsqueda de `TODO`/`FIXME` en código propio: no encontró pendientes explícitos. Los TODO encontrados pertenecen a jQuery de terceros. Las funciones listadas como incompletas arriba son brechas respecto a las historias, no necesariamente TODOs comentados.
+- La selección de rol utiliza sesión distribuida en memoria; la configuración está orientada a una sola instancia web. Persistencia/compartición de sesiones entre múltiples servidores: **NO ENCONTRADO**.
 - El alcance de cotizaciones/ventas permanece **interno**; la integración tributaria SUNAT no está implementada ni debe inferirse de los números internos.
 
 ### 6. Tecnologías y versiones reales
@@ -115,7 +125,7 @@ El historial de ejecución registrado en la sesión previa confirmó la base loc
 | .NET | Proyecto dirigido a `net8.0` (`ProyectoFinal.csproj`). SDK instalado al revisar: `10.0.402`; runtimes instalados incluyen .NET `8.0.32`. El SDK instalado no cambia el target del proyecto. |
 | ASP.NET Core | Framework compartido .NET 8; paquetes Identity/UI `8.0.15`. |
 | Entity Framework Core | Paquetes `Microsoft.EntityFrameworkCore.SqlServer` y `Microsoft.EntityFrameworkCore.Tools` `8.0.15`. |
-| SQL Server | Proveedor EF Core SQL Server configurado y connection string local `Server=.;Database=imprentacollantesbd`. Versión del motor: **NO ENCONTRADO** (no conectó para consultar `@@VERSION`). |
+| SQL Server | Proveedor EF Core SQL Server configurado y connection string local `Server=.;Database=imprentacollantesbd`. Versión del motor local: `16.0.1000.6` (SQL Server 2022). |
 | Bootstrap | `5.1.0`, según encabezado de `wwwroot/lib/bootstrap/dist/css/bootstrap.css`. |
 | jQuery | `3.6.0`, según encabezado de `wwwroot/lib/jquery/dist/jquery.js`. También están jQuery Validation y Unobtrusive Validation. |
 | Chart.js | **NO ENCONTRADO** en código o `wwwroot/lib`; el dashboard dibuja barras con HTML/CSS propio. |

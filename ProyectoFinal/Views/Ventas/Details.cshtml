@@ -10,6 +10,7 @@
 <div class="page-heading-row"><div><h1>Venta @Model.NumeroInterno</h1><p class="intro">Comprobante interno · no válido como comprobante de pago tributario.</p></div><span class="badge text-bg-secondary">@Model.Estado</span></div>
 <dl class="row">
     <dt class="col-sm-3">Cliente</dt><dd class="col-sm-9">@(Model.Cliente?.Nombre ?? "Cliente no disponible")</dd>
+    <dt class="col-sm-3">Almacén de salida</dt><dd class="col-sm-9">@(Model.AlmacenNombreEmision ?? "No registrado en venta histórica")</dd>
     <dt class="col-sm-3">Cotización origen</dt><dd class="col-sm-9"><a asp-controller="Cotizacions" asp-action="Details" asp-route-id="@Model.IdCotizacion">#@Model.IdCotizacion</a></dd>
     <dt class="col-sm-3">Fecha (Perú)</dt><dd class="col-sm-9">@ProyectoFinal.Services.FechaComercial.EnPeru(Model.FechaVentaUtc).ToString("dd/MM/yyyy HH:mm")</dd>
     <dt class="col-sm-3">Total</dt><dd class="col-sm-9">@Model.Total.ToString("C2", culture)</dd>
@@ -18,11 +19,11 @@
 
 <h2>Detalle vendido</h2>
 <div class="table-responsive"><table class="table">
-    <thead><tr><th>Producto / servicio</th><th>Tipo</th><th>Cantidad</th><th>Precio unitario</th><th>Importe sin IGV</th>@if (User.IsInRole("Admin")) { <th>Costo unitario sin IGV</th> }</tr></thead>
+    <thead><tr><th>Producto / servicio</th><th>Tipo</th><th>Cantidad / presentación</th><th>Precio por presentación</th><th>Importe sin IGV</th>@if (User.IsInRole("Admin")) { <th>Costo por unidad base</th> }</tr></thead>
     <tbody>
     @foreach (var line in Model.Detalles)
     {
-        <tr><td>@line.ProductoNombre</td><td>@(line.EsServicio ? "Servicio" : "Artículo")</td><td>@line.Cantidad</td><td>@line.PrecioUnitario.ToString("C2", culture)</td><td>@((line.Cantidad * line.PrecioUnitario).ToString("C2", culture))</td>@if (User.IsInRole("Admin")) { <td>@(line.CostoUnitarioSinIgv is { } costo ? costo.ToString("C2", culture) : "Sin registrar")</td> }</tr>
+        <tr><td>@line.ProductoNombre</td><td>@(line.EsServicio ? "Servicio" : "Artículo")</td><td>@line.Cantidad × @(line.PresentacionDescripcion ?? "Unidad base")@if (!line.EsServicio && line.FactorPresentacion != 1m) { <small class="d-block">= @(line.Cantidad * line.FactorPresentacion) @(line.UnidadBaseDescripcion ?? "unidades base")</small> }</td><td>@line.PrecioUnitario.ToString("C2", culture)</td><td>@((line.Cantidad * line.PrecioUnitario).ToString("C2", culture))</td>@if (User.IsInRole("Admin")) { <td>@(line.CostoUnitarioSinIgv is { } costo ? costo.ToString("C2", culture) : "Sin registrar")</td> }</tr>
     }
     </tbody>
 </table></div>
@@ -30,7 +31,7 @@
 {
     var incomplete = Model.Detalles.Any(line => line.CostoUnitarioSinIgv is null);
     var neto = Model.Detalles.Sum(line => line.Cantidad * line.PrecioUnitario);
-    var costo = Model.Detalles.Sum(line => line.Cantidad * (line.CostoUnitarioSinIgv ?? 0));
+    var costo = Model.Detalles.Sum(line => line.Cantidad * line.FactorPresentacion * (line.CostoUnitarioSinIgv ?? 0));
     <p class="auth-footnote">@(
         incomplete
             ? "Utilidad no calculable para esta venta: faltan costos unitarios en una o más líneas. El costo histórico no se modifica al editar el catálogo."

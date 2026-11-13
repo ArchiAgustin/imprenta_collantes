@@ -1,0 +1,15 @@
+# Evidencia para el cierre de requerimientos
+
+Estado verificado al 2026-11-09: **concluido para el alcance y entorno medidos**. La configuración de tramos comerciales reales corresponde a Admin durante el uso del sistema.
+
+| Evidencia | Resultado |
+| --- | --- |
+| Compilación y pruebas InMemory | `dotnet test ProyectoFinal.sln --no-restore` con salidas de compilación aisladas: 70/70. Incluye los flujos de productos y el control de acceso a tramos. Las pruebas SQL opcionales retornan sin ejecutar su cuerpo cuando no se configuran sus variables de entorno. |
+| Migración, concurrencia y transacciones SQL | En `MSSQLSERVER01` (SQL Server 2025), el respaldo `imprentacollantesbd_pre_rf22_20261109.bak` fue creado y verificado antes de aplicar `20261108120000_TramosDescuentoProducto`. Tabla e historial EF comprobados. Dos pruebas SQL en bases temporales: 2/2. |
+| RF-12: envío y auditoría | El usuario confirmó recepción y apertura del PDF enviado desde «Enviar al cliente». En la base `imprentacollantesbd` se verificó la auditoría **«Cotización enviada por correo»**, cotización **4**, fecha **2026-11-10 03:32:30 UTC** (2026-11-09 22:32:30, hora de Lima). No se publican dirección ni credenciales. |
+| RF-22: recomendación de precio | En una base SQL temporal migrada se configuró un tramo de **100 unidades / 30 %** para un producto sintético de catálogo **150,00** y costo **100,00**. La recomendación fue **111,12** sin IGV, igual al piso que preserva 10 % de margen bruto. La pantalla HTTP `RevisarPrecio` mostró la recomendación y la decisión del vendedor; el precio ingresado por este (**140,00**) permaneció intacto. La base comercial no recibió datos sintéticos. |
+| RNF-04: arquitectura | `ProductoesController` delega consultas y mutaciones a `IProductosCatalogoService`; la transacción, el bloqueo de inventario, las restricciones de eliminación y el control `RowVersion` permanecen en el servicio. Búsqueda de `ApplicationDbContext` en `Controllers/*.cs`: sin resultados. Suite 70/70 y prueba SQL de concurrencia aprobadas. |
+| RNF-05: rendimiento BI | Prueba reproducible `SqlServerDashboardLoadTests` contra SQL Server 2025 local `MSSQLSERVER01`, en base temporal migrada con **10 000 ventas y 30 000 líneas sintéticas** distribuidas en **366 días**. Tras tres solicitudes de calentamiento, diez respuestas HTTP completas y autenticadas de `/Analytics` tardaron **362,0; 448,2; 352,2; 342,4; 363,2; 365,3; 402,0; 328,3; 421,5; 366,9 ms**. Máximo: **448,2 ms**, inferior a **1 500 ms**. Incluye autorización, consultas y renderizado; no representa una red remota ni un volumen mayor. |
+| RNF-07: contexto único | Solo se registra `ApplicationDbContext`; los contextos heredados y su conexión sobrante fueron retirados. |
+
+La prueba de carga crea una base con nombre único `ProyectoFinal_Load_*`, aplica las migraciones, comprueba sus volúmenes y la elimina al terminar. La base comercial restaurada permanece intacta. Para repetirla, establecer `PROYECTOFINAL_SQL_LOAD_CONNECTION` con conexión a `master` y ejecutar `dotnet test ProyectoFinal.Tests/ProyectoFinal.Tests.csproj --filter FullyQualifiedName~SqlServerDashboardLoadTests`.

@@ -57,6 +57,8 @@ public partial class Producto
 
     public virtual ICollection<DetalleVenta> DetalleVentas { get; set; } = new List<DetalleVenta>();
 
+    public virtual ICollection<PresentacionProducto> Presentaciones { get; set; } = new List<PresentacionProducto>();
+
     [ForeignKey("IdProveedor")]
     [InverseProperty("Productos")]
     public virtual Proveedor? IdProveedorNavigation { get; set; }

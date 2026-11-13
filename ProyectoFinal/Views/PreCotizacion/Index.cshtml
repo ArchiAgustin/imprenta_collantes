@@ -2,6 +2,7 @@
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Preparar cotización";
+    var tipoDocumentoSugerido = Model.ClienteDocumentoTipoSugerido switch { "1" => "DNI", "6" => "RUC", _ => Model.ClienteDocumentoTipoSugerido };
 }
 
 <div class="page-heading-row">
@@ -11,7 +12,7 @@
 
 <div class="assistant-privacy" role="note">
     <strong>Antes de usar Groq</strong>
-    <p>Se ocultarán correos, teléfonos, documentos, enlaces y algunos campos identificables. Los nombres o direcciones escritos libremente pueden escapar a la detección: revisa el texto exacto que se enviará y elimina cualquier dato personal restante. No se envía el catálogo ni se crea ninguna venta o cotización.</p>
+    <p>Correos, teléfonos, documentos y algunos campos identificables se ocultan localmente antes de la llamada. El nombre y DNI/RUC etiquetados se detectan localmente y no se incluyen en la petición a Groq; puedes confirmarlos por separado. Los nombres o direcciones libres pueden escapar a la detección: revisa el texto exacto y elimina datos personales restantes. No se envía el catálogo ni se crea ninguna venta o cotización.</p>
 </div>
 
 @if (Model.Aviso is not null)
@@ -31,6 +32,19 @@
                 @foreach (var cliente in Model.Clientes) { <option value="@cliente.IdCliente">@cliente.Nombre</option> }
                 </select><span asp-validation-for="ClienteId" class="text-danger"></span>
             </div>
+            @if (Model.ConfirmarIdentidadLocal && (Model.ClienteNombreSugerido is not null || Model.ClienteDocumentoNumeroSugerido is not null))
+            {
+                <div class="status-note" role="status">
+                    Identidad detectada localmente: <strong>@(Model.ClienteNombreSugerido ?? "Nombre no detectado")</strong>
+                    @if (tipoDocumentoSugerido is not null) { <span>· @tipoDocumentoSugerido @Model.ClienteDocumentoNumeroSugerido</span> }
+                    @if (Model.ClienteIdSugerido is { } suggested) { <span>· coincidencia exacta sugerida: @Model.Clientes.First(client => client.IdCliente == suggested).Nombre</span> }
+                    else { <span>· sin coincidencia exacta; elige un cliente registrado. No se crea ningún cliente automáticamente.</span> }
+                </div>
+                <input asp-for="ClienteNombreSugerido" type="hidden" />
+                <input asp-for="ClienteDocumentoTipoSugerido" type="hidden" />
+                <input asp-for="ClienteDocumentoNumeroSugerido" type="hidden" />
+                <input asp-for="ConfirmarIdentidadLocal" type="hidden" />
+            }
             @for (var i = 0; i < Model.Lineas.Count; i++)
             {
                 <div class="assistant-result-line">
@@ -39,10 +53,27 @@
                     <input asp-for="Lineas[i].NombreSugerido" type="hidden" />
                     <input asp-for="Lineas[i].Especificacion" type="hidden" />
                     <div class="assistant-result-fields"><div class="form-group"><label asp-for="Lineas[i].ProductoId" class="control-label">Producto del catálogo</label>
-                        <select asp-for="Lineas[i].ProductoId" class="form-select"><option value="">Selecciona el producto real</option>
-                        @foreach (var producto in Model.Productos) { <option value="@producto.IdProducto">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option> }
+                        <select asp-for="Lineas[i].ProductoId" class="form-select assistant-product-select"><option value="">Selecciona el producto real</option>
+                        @foreach (var producto in Model.Productos) { <option value="@producto.IdProducto" data-es-servicio="@producto.EsServicio.ToString().ToLowerInvariant()" data-base-unit="@(producto.UnidadMedidaBase?.DescripcionCorta ?? producto.UnidadMedidaBase?.Descripcion ?? "Unidad base")">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option> }
                         </select><span asp-validation-for="Lineas[i].ProductoId" class="text-danger"></span></div>
-                        <div class="form-group"><label asp-for="Lineas[i].Cantidad" class="control-label">Cantidad</label><input asp-for="Lineas[i].Cantidad" class="form-control" type="number" min="1" max="1000000" /><span asp-validation-for="Lineas[i].Cantidad" class="text-danger"></span></div></div>
+                        @if (Model.Lineas[i].Candidatos.Count > 0)
+                        {
+                            <div class="form-group assistant-product-candidates"><span class="form-label">Sugerencias para revisar</span><ul>
+                            @foreach (var candidate in Model.Lineas[i].Candidatos)
+                            { <li><button type="button" class="btn btn-sm btn-outline-secondary assistant-candidate" data-product-id="@candidate.IdProducto">@candidate.Nombre · @candidate.Motivo</button></li> }
+                            </ul></div>
+                        }
+                        <div class="form-group"><label asp-for="Lineas[i].IdPresentacionProducto">Presentación</label><select asp-for="Lineas[i].IdPresentacionProducto" class="form-select assistant-presentation-select">
+                            <option value="" data-product-id="" data-factor="1">Unidad base</option>
+                            @foreach (var product in Model.Productos)
+                            {
+                                @foreach (var presentation in product.Presentaciones)
+                                {
+                                    <option value="@presentation.IdPresentacionProducto" data-product-id="@product.IdProducto" data-is-base="@(presentation.IdUnidadMedida == product.IdUnidadMedidaBase && presentation.Factor == 1m ? "true" : "false")" data-factor="@presentation.Factor.ToString(System.Globalization.CultureInfo.InvariantCulture)">@product.Nombre · @presentation.Descripcion (@presentation.Factor.ToString("0.###") @presentation.UnidadMedida.Descripcion)</option>
+                                }
+                            }
+                        </select><span asp-validation-for="Lineas[i].IdPresentacionProducto" class="text-danger"></span></div>
+                        <div class="form-group"><label asp-for="Lineas[i].Cantidad" class="control-label" data-assistant-quantity-label>Cantidad</label><input asp-for="Lineas[i].Cantidad" class="form-control" type="number" min="1" max="1000000" /><span asp-validation-for="Lineas[i].Cantidad" class="text-danger"></span></div></div>
                 </div>
             }
             <div asp-validation-for="Lineas" class="text-danger"></div>
@@ -59,6 +90,19 @@ else if (Model.Preparada)
     <form asp-action="Analizar" method="post" class="assistant-review">
         <section class="quote-card" aria-labelledby="assistant-preview-heading"><div class="quote-card-heading"><div><h2 id="assistant-preview-heading">Revisa el texto que se enviará</h2><p>Solo esta versión revisada se enviará a Groq. Corrige u omite datos antes de continuar.</p></div></div>
             <div class="form-group"><label asp-for="TextoRevisado" class="control-label">Contenido para análisis</label><textarea asp-for="TextoRevisado" class="form-control" rows="9" minlength="10" maxlength="4000" required></textarea><span asp-validation-for="TextoRevisado" class="text-danger"></span></div>
+            @if (Model.ClienteNombreSugerido is not null || Model.ClienteDocumentoNumeroSugerido is not null)
+            {
+                <div class="assistant-local-identity">
+                    <h3>Identidad detectada en este dispositivo</h3>
+                    <p>Este candidato se extrajo localmente y no se enviará a Groq.</p>
+                    <p><strong>@(Model.ClienteNombreSugerido ?? "Nombre no detectado")</strong> @if (tipoDocumentoSugerido is not null) { <span>· @tipoDocumentoSugerido @Model.ClienteDocumentoNumeroSugerido</span> }</p>
+                    <input asp-for="ClienteNombreSugerido" type="hidden" />
+                    <input asp-for="ClienteDocumentoTipoSugerido" type="hidden" />
+                    <input asp-for="ClienteDocumentoNumeroSugerido" type="hidden" />
+                    <div class="form-check"><input asp-for="ConfirmarIdentidadLocal" class="form-check-input" /><label asp-for="ConfirmarIdentidadLocal" class="form-check-label">Confirmo que estos datos del cliente son correctos para sugerir una coincidencia local.</label></div>
+                    <span asp-validation-for="ConfirmarIdentidadLocal" class="text-danger"></span>
+                </div>
+            }
             <div class="form-check"><input asp-for="TextoAprobado" class="form-check-input" /><label asp-for="TextoAprobado" class="form-check-label">Revisé el texto y confirmé que no contiene datos personales.</label><span asp-validation-for="TextoAprobado" class="text-danger d-block"></span></div>
             <div class="page-actions"><button type="submit" class="btn btn-primary">Enviar texto revisado a Groq</button><a asp-action="Index" class="btn btn-outline-secondary">Empezar de nuevo</a></div>
         </section>
@@ -74,4 +118,46 @@ else
     </form>
 }
 
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const form = document.querySelector(".assistant-review");
+            if (!form) return;
+            const syncPresentation = (row, reset = false) => {
+                const product = row.querySelector(".assistant-product-select");
+                const presentation = row.querySelector(".assistant-presentation-select");
+                const selectedProduct = product?.selectedOptions[0];
+                if (!presentation || !product) return;
+                const isService = selectedProduct?.dataset.esServicio === "true";
+                presentation.querySelectorAll("option").forEach(option => {
+                    option.disabled = Boolean(option.dataset.productId && option.dataset.productId !== product.value);
+                });
+                presentation.disabled = !product.value || isService;
+                if (isService) presentation.value = "";
+                else if (reset || !Array.from(presentation.options).some(option => option.value === presentation.value && !option.disabled)) {
+                    const base = Array.from(presentation.options).find(option => !option.disabled && option.dataset.productId === product.value && option.dataset.isBase === "true");
+                    presentation.value = base?.value ?? "";
+                }
+                const chosen = presentation.selectedOptions[0];
+                const quantityLabel = row.querySelector("[data-assistant-quantity-label]");
+                if (quantityLabel) quantityLabel.textContent = `Cantidad (${isService ? "servicio" : chosen?.textContent?.trim() || selectedProduct?.dataset.baseUnit || "unidad base"})`;
+            };
+            form.querySelectorAll(".assistant-result-line").forEach(row => syncPresentation(row));
+            form.addEventListener("change", event => {
+                if (event.target.matches(".assistant-product-select")) syncPresentation(event.target.closest(".assistant-result-line"), true);
+                else if (event.target.matches(".assistant-presentation-select")) syncPresentation(event.target.closest(".assistant-result-line"));
+            });
+            form.addEventListener("click", event => {
+                const button = event.target.closest(".assistant-candidate");
+                if (!button) return;
+                const row = button.closest(".assistant-result-line");
+                const select = row?.querySelector(".assistant-product-select");
+                if (!select) return;
+                select.value = button.dataset.productId;
+                select.dispatchEvent(new Event("change", { bubbles: true }));
+                select.focus();
+            });
+        })();
+    </script>
+}

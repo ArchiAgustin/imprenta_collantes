@@ -1,48 +1,32 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ProyectoFinal.Data;
 using ProyectoFinal.Services;
 
 namespace ProyectoFinal.Controllers;
 
 [Authorize]
-public class VentasController(ApplicationDbContext context, VentaService ventaService) : Controller
+public class VentasController(IVentaService ventaService) : Controller
 {
-    public async Task<IActionResult> Index()
-    {
-        var sales = await context.Venta.AsNoTracking()
-            .Include(item => item.Cliente)
-            .Include(item => item.Pedido)
-            .OrderByDescending(item => item.FechaVentaUtc)
-            .ToListAsync();
-        return View(sales);
-    }
+    public async Task<IActionResult> Index() => View(await ventaService.ListarAsync());
 
     public async Task<IActionResult> Details(int id)
     {
-        var sale = await context.Venta.AsNoTracking()
-            .Include(item => item.Cliente)
-            .Include(item => item.Cotizacion)
-            .Include(item => item.Pedido)
-            .Include(item => item.Detalles)
-            .FirstOrDefaultAsync(item => item.IdVenta == id);
+        var sale = await ventaService.ObtenerDetalleAsync(id);
         return sale is null ? NotFound() : View(sale);
     }
 
     [HttpGet]
     public async Task<IActionResult> Imprimir(int id)
     {
-        var sale = await context.Venta.AsNoTracking().Include(item => item.Detalles)
-            .FirstOrDefaultAsync(item => item.IdVenta == id);
+        var sale = await ventaService.ObtenerParaImprimirAsync(id);
         return sale is null ? NotFound() : View(sale);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ConfirmarDesdeCotizacion(int cotizacionId)
+    public async Task<IActionResult> ConfirmarDesdeCotizacion(int cotizacionId, int idAlmacen)
     {
-        var result = await ventaService.ConfirmarCotizacionAsync(cotizacionId,
+        var result = await ventaService.ConfirmarCotizacionAsync(cotizacionId, idAlmacen,
             User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty, User);
         TempData[result.Exito ? "Success" : "Error"] = result.Mensaje;
         return result.Exito

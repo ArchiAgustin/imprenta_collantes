@@ -1,12 +1,14 @@
 @inject ProyectoFinal.Services.IMenuAccessService MenuAccess
 @{
     Layout = null;
-    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var isPanel = ViewContext.RouteData.Values["page"]?.ToString() == "/Usuario/Panel";
-    var isAdmin = User.IsInRole("Admin");
     var menus = User.Identity?.IsAuthenticated == true
         ? await MenuAccess.GetNavigationMenusAsync(User)
         : Array.Empty<ProyectoFinal.Services.MenuNavigationItem>();
+    var roleIds = User.FindAll(ProyectoFinal.Services.ActiveRoleMiddleware.AvailableRoleIdClaim).Select(claim => claim.Value).ToList();
+    var roleNames = User.FindAll(ProyectoFinal.Services.ActiveRoleMiddleware.AvailableRoleNameClaim).Select(claim => claim.Value).ToList();
+    var activeRoleId = User.FindFirst(ProyectoFinal.Services.ActiveRoleMiddleware.ActiveRoleIdClaim)?.Value;
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
 }
 <!doctype html>
 <html lang="es">
@@ -25,6 +27,20 @@
                 <img src="~/img/marca-collantes.svg" alt="" width="42" height="42" />
                 <span><strong>Collantes</strong><small>GESTIÓN DE IMPRENTA</small></span>
             </a>
+            @if (roleIds.Count > 1)
+            {
+                <form class="active-role-form" asp-area="" asp-controller="RoleSelection" asp-action="Cambiar" method="post" aria-label="Cambiar rol activo">
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <label for="activeRoleId">Rol activo</label>
+                    <select id="activeRoleId" name="roleId" aria-label="Rol que se usará para esta sesión">
+                        @for (var roleIndex = 0; roleIndex < roleIds.Count; roleIndex++)
+                        {
+                            <option value="@roleIds[roleIndex]" selected="@(roleIds[roleIndex] == activeRoleId ? "selected" : null)">@roleNames.ElementAtOrDefault(roleIndex)</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Cambiar</button>
+                </form>
+            }
             <div class="header-actions">
                 <button class="btn nav-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#panelNav" aria-controls="panelNav" aria-expanded="false">Menú</button>
                 <nav aria-label="Cuenta" class="header-account"><partial name="_LoginPartial" /></nav>
@@ -35,21 +51,7 @@
         <nav id="panelNav" class="panel-nav collapse d-lg-block" aria-label="Módulos">
             <div class="nav-heading">ÁREA DE TRABAJO</div>
             <a class="panel-link @(isPanel ? "is-current" : "")" asp-area="Identity" asp-page="/Usuario/Panel" aria-current="@(isPanel ? "page" : null)">Inicio</a>
-            @foreach (var menu in menus)
-            {
-                <a class="panel-link @(controller == menu.ControllerNombre ? "is-current" : "")" asp-area="" asp-controller="@menu.ControllerNombre" asp-action="Index" aria-current="@(controller == menu.ControllerNombre ? "page" : null)">@menu.Nombre</a>
-            }
-            @if (isAdmin)
-            {
-                <div class="nav-heading nav-heading-spaced">ADMINISTRACIÓN</div>
-                <a class="panel-link @(controller == "SeriesInternas" ? "is-current" : "")" asp-area="" asp-controller="SeriesInternas" asp-action="Index" aria-current="@(controller == "SeriesInternas" ? "page" : null)">Series internas</a>
-                <a class="panel-link @(controller == "Inventario" ? "is-current" : "")" asp-area="" asp-controller="Inventario" asp-action="Index" aria-current="@(controller == "Inventario" ? "page" : null)">Inventario · Almacén principal</a>
-                <a class="panel-link @(controller == "Admin" ? "is-current" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(controller == "Admin" ? "page" : null)">Usuarios</a>
-                <a class="panel-link @(controller == "Roles" ? "is-current" : "")" asp-area="" asp-controller="Roles" asp-action="Index" aria-current="@(controller == "Roles" ? "page" : null)">Roles</a>
-                <a class="panel-link @(controller == "Permisos" ? "is-current" : "")" asp-area="" asp-controller="Permisos" asp-action="Index" aria-current="@(controller == "Permisos" ? "page" : null)">Permisos de menú</a>
-                <a class="panel-link @(controller == "Auditoria" ? "is-current" : "")" asp-area="" asp-controller="Auditoria" asp-action="Index" aria-current="@(controller == "Auditoria" ? "page" : null)">Auditoría</a>
-                <a class="panel-link @(controller == "Analytics" ? "is-current" : "")" asp-area="" asp-controller="Analytics" asp-action="Index" aria-current="@(controller == "Analytics" ? "page" : null)">Analítica</a>
-            }
+            <partial name="~/Views/Shared/_MenuTree.cshtml" model="menus" />
             <div class="nav-footer">Un espacio para cada trabajo.</div>
         </nav>
         <main id="contenido" class="panel-main" role="main">

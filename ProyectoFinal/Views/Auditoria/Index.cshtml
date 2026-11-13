@@ -5,8 +5,7 @@
     var emails = ViewBag.UserEmails as IReadOnlyDictionary<string, string> ?? new Dictionary<string, string>();
 }
 
-<h1>Historial de auditoría</h1>
-<p class="intro">Registro cronológico de cotizaciones, ventas y trabajos. Visible solo para administradores.</p>
+<div class="page-heading-row"><div><h1>Historial de auditoría</h1><p class="intro">Registro cronológico de cotizaciones, ventas y trabajos. Visible solo para administradores.</p></div></div>
 
 <form method="get" class="row g-2 mb-4">
     <div class="col-sm-4"><label class="form-label" for="tipoEntidad">Entidad</label><select class="form-select" id="tipoEntidad" name="tipoEntidad">

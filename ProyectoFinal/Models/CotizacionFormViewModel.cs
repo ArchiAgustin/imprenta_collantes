@@ -63,6 +63,18 @@ public sealed class CotizacionLineaInputViewModel
     [Range(1, int.MaxValue, ErrorMessage = "Selecciona un producto válido.")]
     public int? ProductoId { get; set; }
 
+    [Range(1, int.MaxValue, ErrorMessage = "Selecciona una presentación válida.")]
+    public int? IdPresentacionProducto { get; set; }
+
+    [BindNever]
+    public decimal FactorPresentacion { get; set; } = 1m;
+
+    [BindNever]
+    public string? PresentacionDescripcion { get; set; }
+
+    [BindNever]
+    public string? UnidadBaseDescripcion { get; set; }
+
     [Range(1, 1_000_000, ErrorMessage = "La cantidad debe estar entre 1 y 1 000 000.")]
     public int Cantidad { get; set; } = 1;
 

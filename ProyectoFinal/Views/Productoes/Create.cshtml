@@ -1,18 +1,14 @@
 ﻿@model ProyectoFinal.Models.Producto
+@using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Nuevo producto";
 }
 
-<h1>Nuevo producto</h1>
-
-<h4>Producto</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="page-heading-row"><div><h1>Nuevo producto</h1><p class="intro">Registra la ficha del producto; las existencias se cargan desde Inventario.</p></div></div>
+<form asp-action="Create" method="post" class="panel-form">
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
             <div class="form-group">
                 <label asp-for="Nombre" class="control-label"></label>
                 <input asp-for="Nombre" class="form-control" />
@@ -24,9 +20,10 @@
                 <span asp-validation-for="Descripcion" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Precio" class="control-label"></label>
+                <label asp-for="Precio" class="control-label">Precio por unidad base sin IGV</label>
                 <input asp-for="Precio" class="form-control" />
                 <span asp-validation-for="Precio" class="text-danger"></span>
+                <div class="form-text">La cotización por otra presentación partirá de este importe multiplicado por su factor.</div>
             </div>
             <div class="form-group">
                 <label asp-for="CostoUnitarioSinIgv" class="control-label">Costo unitario sin IGV <span class="field-optional">(opcional)</span></label>
@@ -39,22 +36,32 @@
                 <label asp-for="EsServicio" class="form-check-label"></label>
                 <div class="form-text">Los servicios no controlan ni descuentan existencias.</div>
             </div>
-            <p class="form-text">Las existencias no se ingresan aquí. Registra un conteo físico o una entrada en Inventario.</p>
+            <div class="form-group">
+                <label asp-for="IdUnidadMedidaBase">Unidad base del artículo</label>
+                <select asp-for="IdUnidadMedidaBase" class="form-select" asp-items="@(ViewData["UnidadesMedida"] as IEnumerable<SelectListItem>)" data-base-unit>
+                    <option value="">Selecciona una unidad revisada</option>
+                </select>
+                <span asp-validation-for="IdUnidadMedidaBase" class="text-danger"></span>
+                <div class="form-text">Se usará para registrar existencias. Los servicios no requieren unidad base.</div>
+            </div>
+            <p class="form-text">Las existencias no se ingresan aquí. Registra el inventario físico desde el módulo Inventario.</p>
             <div class="form-group">
                 <label asp-for="IdProveedor" class="control-label"></label>
                 <select asp-for="IdProveedor" class ="form-control" asp-items="ViewBag.IdProveedor"></select>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Guardar producto" class="btn btn-primary" />
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="page-actions">
-    <a class="btn btn-outline-secondary" asp-action="Index">Cancelar y volver a productos</a>
-</div>
+            <div class="page-actions"><button type="submit" class="btn btn-primary">Guardar producto</button><a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a></div>
+</form>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (() => {
+            const service = document.getElementById("EsServicio");
+            const unit = document.querySelector("[data-base-unit]");
+            if (!service || !unit) return;
+            const update = () => { unit.disabled = service.checked; unit.required = !service.checked; if (service.checked) unit.value = ""; };
+            service.addEventListener("change", update);
+            update();
+        })();
+    </script>
 }

@@ -32,9 +32,24 @@ public class DetalleVenta
     [Column("esServicio")]
     public bool EsServicio { get; set; }
 
+    [Column("idPresentacionProducto")]
+    public int? IdPresentacionProducto { get; set; }
+
+    [Column("factorPresentacion", TypeName = "decimal(12,3)")]
+    public decimal FactorPresentacion { get; set; } = 1m;
+
+    [Column("presentacionDescripcion"), StringLength(100)]
+    public string? PresentacionDescripcion { get; set; }
+
+    [Column("unidadBaseDescripcion"), StringLength(100)]
+    public string? UnidadBaseDescripcion { get; set; }
+
     [ForeignKey(nameof(IdVenta))]
     public virtual Venta? Venta { get; set; }
 
     [ForeignKey(nameof(IdProducto))]
     public virtual Producto? Producto { get; set; }
+
+    [ForeignKey(nameof(IdPresentacionProducto))]
+    public PresentacionProducto? Presentacion { get; set; }
 }

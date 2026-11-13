@@ -21,6 +21,14 @@ public sealed class SerieDocumentoInterno
     [Range(4, 10), Column("digitos")]
     public int Digitos { get; set; } = 6;
 
+    // Optional for quotations; an internal sale can be classified by a SUNAT
+    // reference type without becoming an electronic or tax-issued document.
+    [Column("idTipoComprobanteSunat")]
+    public int? IdTipoComprobanteSunat { get; set; }
+
+    [ForeignKey(nameof(IdTipoComprobanteSunat))]
+    public TipoDocumentoPagoSunat? TipoComprobanteSunat { get; set; }
+
     [Column("activa")]
     public bool Activa { get; set; }
 }

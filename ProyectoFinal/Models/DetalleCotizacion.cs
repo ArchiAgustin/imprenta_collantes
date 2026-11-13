@@ -28,6 +28,18 @@ public partial class DetalleCotizacion
     [Column("productoNombreEmision"), StringLength(100)]
     public string? ProductoNombreEmision { get; set; }
 
+    [Column("idPresentacionProducto")]
+    public int? IdPresentacionProducto { get; set; }
+
+    [Column("factorPresentacion", TypeName = "decimal(12,3)")]
+    public decimal FactorPresentacion { get; set; } = 1m;
+
+    [Column("presentacionDescripcion"), StringLength(100)]
+    public string? PresentacionDescripcion { get; set; }
+
+    [Column("unidadBaseDescripcion"), StringLength(100)]
+    public string? UnidadBaseDescripcion { get; set; }
+
     [ForeignKey("IdCotizacion")]
     [InverseProperty("DetalleCotizacions")]
     public virtual Cotizacion? IdCotizacionNavigation { get; set; }
@@ -35,4 +47,7 @@ public partial class DetalleCotizacion
     [ForeignKey("IdProducto")]
     [InverseProperty("DetalleCotizacions")]
     public virtual Producto? IdProductoNavigation { get; set; }
+
+    [ForeignKey(nameof(IdPresentacionProducto))]
+    public PresentacionProducto? Presentacion { get; set; }
 }

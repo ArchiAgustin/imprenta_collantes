@@ -24,10 +24,15 @@
             <ul class="quote-price-guidance-list">
             @foreach (var reference in Model.ReferenciasPrecio)
             {
-                <li><strong>@reference.NombreProducto</strong><span>@reference.CantidadSolicitada unidad@(reference.CantidadSolicitada == 1 ? "" : "es")</span>
+                <li><strong>@reference.NombreProducto</strong><span>@reference.CantidadSolicitada × @reference.Presentacion</span>
+                    @if (reference.PrecioRecomendadoSinIgv is { } recomendado)
+                    {
+                        <p>Precio recomendado por presentación sin IGV: <strong>@recomendado.ToString("C2", peru)</strong>. @reference.MotivoRecomendacion El vendedor decide el precio final.</p>
+                    }
+                    else { <p>No hay recomendación de precio para este producto y cantidad; revisa las referencias disponibles.</p> }
                     @if (reference.PrecioMinimoSinIgv is { } minimo)
                     {
-                        <p>Mínimo por unidad sin IGV: <strong>@minimo.ToString("C2", peru)</strong>@(reference.CostoEstimado ? " · basado en costo estimado de servicio" : "").</p>
+                        <p>Mínimo por presentación sin IGV: <strong>@minimo.ToString("C2", peru)</strong>@(reference.CostoEstimado ? " · basado en costo estimado de servicio" : "").</p>
                         @if (reference.DescuentoMaximoPorcentaje is { } descuento)
                         {
                             <p>Desde el precio actual de catálogo (@reference.PrecioCatalogoSinIgv!.Value.ToString("C2", peru)), el descuento máximo compatible es <strong>@descuento.ToString("N2", peru) %</strong>. Es un límite, no una oferta recomendada.</p>
@@ -37,7 +42,7 @@
                     else { <p>No se calcula descuento: falta un costo unitario mayor que cero. No se asume costo cero.</p> }
                     @if (reference.UltimoPrecioClienteSinIgv is { } anterior)
                     {
-                        <p>Última venta confirmada a este cliente: @anterior.ToString("C2", peru) sin IGV por unidad (@reference.UltimaCantidadCliente unidades).
+                        <p>Última venta confirmada a este cliente con factor comparable: @anterior.ToString("C2", peru) sin IGV por presentación (@reference.UltimaCantidadCliente unidades).
                         @if (reference.PrecioHistoricoAplicableSinIgv is { } historico)
                         { <span>Referencia para evaluar: <strong>@historico.ToString("C2", peru)</strong> sin IGV; no se aplicó automáticamente.</span> }
                         else { <span>No se propone repetirla: puede quedar bajo el mínimo, superar el catálogo o corresponder a mayor tiraje.</span> }
@@ -119,19 +124,33 @@
                                     <option value="">Selecciona del catálogo</option>
                                     @foreach (var producto in Model.Productos)
                                     {
-                                        <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" selected="@(Model.Lineas[index].ProductoId == producto.IdProducto ? "selected" : null)">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
+                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" data-es-servicio="@producto.EsServicio.ToString().ToLowerInvariant()" data-base-unit="@(producto.UnidadMedidaBase?.DescripcionCorta ?? producto.UnidadMedidaBase?.Descripcion ?? "Unidad base")" selected="@(Model.Lineas[index].ProductoId == producto.IdProducto ? "selected" : null)">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
                                     }
                                 </select>
                                 <span asp-validation-for="Lineas[index].ProductoId" class="text-danger"></span>
                             </div>
+                            <div class="form-group quote-presentation-field">
+                                <label asp-for="Lineas[index].IdPresentacionProducto">Presentación</label>
+                                <select asp-for="Lineas[index].IdPresentacionProducto" class="form-select quote-presentation-select">
+                                    <option value="" data-product-id="" data-factor="1" data-label="Unidad base">Unidad base</option>
+                                    @foreach (var product in Model.Productos)
+                                    {
+                                        @foreach (var presentation in product.Presentaciones)
+                                        {
+                                            <option value="@presentation.IdPresentacionProducto" data-product-id="@product.IdProducto" data-is-base="@(presentation.IdUnidadMedida == product.IdUnidadMedidaBase && presentation.Factor == 1m ? "true" : "false")" data-factor="@presentation.Factor.ToString(CultureInfo.InvariantCulture)" data-label="@presentation.Descripcion" data-unit-base="@(product.UnidadMedidaBase?.DescripcionCorta ?? product.UnidadMedidaBase?.Descripcion ?? "Unidad base")" selected="@(Model.Lineas[index].IdPresentacionProducto == presentation.IdPresentacionProducto ? "selected" : null)">@product.Nombre · @presentation.Descripcion (@presentation.Factor.ToString("0.###") @presentation.UnidadMedida.Descripcion)</option>
+                                        }
+                                    }
+                                </select>
+                                <span asp-validation-for="Lineas[index].IdPresentacionProducto" class="text-danger"></span>
+                            </div>
                             <div class="quote-line-fields">
                                 <div class="form-group">
-                                    <label asp-for="Lineas[index].Cantidad" class="control-label">Cantidad</label>
+                                    <label asp-for="Lineas[index].Cantidad" class="control-label" data-quantity-label>Cantidad</label>
                                     <input asp-for="Lineas[index].Cantidad" class="form-control quote-quantity" type="number" min="1" max="1000000" step="1" />
                                     <span asp-validation-for="Lineas[index].Cantidad" class="text-danger"></span>
                                 </div>
                                 <div class="form-group">
-                                    <label asp-for="Lineas[index].PrecioUnitario" class="control-label">Precio unitario sin IGV</label>
+                                    <label asp-for="Lineas[index].PrecioUnitario" class="control-label" data-price-label>Precio por presentación sin IGV</label>
                                     <div class="input-with-prefix"><span>S/</span><input asp-for="Lineas[index].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" /></div>
                                     <span asp-validation-for="Lineas[index].PrecioUnitario" class="text-danger"></span>
                                 </div>
@@ -150,19 +169,33 @@
                                 <option value="">Selecciona del catálogo</option>
                                 @foreach (var producto in Model.Productos)
                                 {
-                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
+                                    <option value="@producto.IdProducto" data-unit-price="@(producto.Precio?.ToString(CultureInfo.InvariantCulture) ?? "0")" data-es-servicio="@producto.EsServicio.ToString().ToLowerInvariant()" data-base-unit="@(producto.UnidadMedidaBase?.DescripcionCorta ?? producto.UnidadMedidaBase?.Descripcion ?? "Unidad base")">@(producto.EsServicio ? "Servicio" : "Artículo") · @producto.Nombre</option>
                                 }
                             </select>
                             <span class="text-danger" data-valmsg-for="Lineas[__index__].ProductoId" data-valmsg-replace="true"></span>
                         </div>
+                        <div class="form-group quote-presentation-field">
+                            <label class="control-label" for="Lineas___index___IdPresentacionProducto">Presentación</label>
+                            <select id="Lineas___index___IdPresentacionProducto" name="Lineas[__index__].IdPresentacionProducto" class="form-select quote-presentation-select">
+                                <option value="" data-product-id="" data-factor="1" data-label="Unidad base">Unidad base</option>
+                                @foreach (var product in Model.Productos)
+                                {
+                                    @foreach (var presentation in product.Presentaciones)
+                                    {
+                                        <option value="@presentation.IdPresentacionProducto" data-product-id="@product.IdProducto" data-is-base="@(presentation.IdUnidadMedida == product.IdUnidadMedidaBase && presentation.Factor == 1m ? "true" : "false")" data-factor="@presentation.Factor.ToString(CultureInfo.InvariantCulture)" data-label="@presentation.Descripcion" data-unit-base="@(product.UnidadMedidaBase?.DescripcionCorta ?? product.UnidadMedidaBase?.Descripcion ?? "Unidad base")">@product.Nombre · @presentation.Descripcion (@presentation.Factor.ToString("0.###") @presentation.UnidadMedida.Descripcion)</option>
+                                    }
+                                }
+                            </select>
+                            <span class="text-danger" data-valmsg-for="Lineas[__index__].IdPresentacionProducto" data-valmsg-replace="true"></span>
+                        </div>
                         <div class="quote-line-fields">
                             <div class="form-group">
-                                <label class="control-label" for="Lineas___index___Cantidad">Cantidad</label>
+                                <label class="control-label" for="Lineas___index___Cantidad" data-quantity-label>Cantidad</label>
                                 <input id="Lineas___index___Cantidad" name="Lineas[__index__].Cantidad" class="form-control quote-quantity" type="number" min="1" max="1000000" step="1" value="1" data-val="true" data-val-range="La cantidad debe estar entre 1 y 1 000 000." data-val-range-min="1" data-val-range-max="1000000" />
                                 <span class="text-danger" data-valmsg-for="Lineas[__index__].Cantidad" data-valmsg-replace="true"></span>
                             </div>
                             <div class="form-group">
-                                <label class="control-label" for="Lineas___index___PrecioUnitario">Precio unitario sin IGV</label>
+                                <label class="control-label" for="Lineas___index___PrecioUnitario" data-price-label>Precio por presentación sin IGV</label>
                                 <div class="input-with-prefix"><span>S/</span><input id="Lineas___index___PrecioUnitario" name="Lineas[__index__].PrecioUnitario" class="form-control quote-price" type="number" min="0" max="99999999.99" step="0.01" value="0.00" data-val="true" data-val-range="Ingresa un precio válido." data-val-range-min="0" data-val-range-max="99999999.99" /></div>
                                 <span class="text-danger" data-valmsg-for="Lineas[__index__].PrecioUnitario" data-valmsg-replace="true"></span>
                             </div>
@@ -180,6 +213,7 @@
 
                 <div class="page-actions quote-form-actions">
                     <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+                    <button type="submit" class="btn btn-outline-primary" formaction="@Url.Action("RevisarPrecio", "Cotizacions")" formnovalidate>Revisar precio recomendado</button>
                     <button type="submit" class="btn btn-primary">Guardar cotización</button>
                 </div>
             }

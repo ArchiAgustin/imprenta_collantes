@@ -1,0 +1,31 @@
+@model ProyectoFinal.Models.MenuAdminFormViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    var nuevo = Model.IdMenu is null;
+    ViewData["Title"] = nuevo ? "Nuevo menú" : $"Editar {Model.Nombre}";
+    var parents = (IReadOnlyList<ProyectoFinal.Models.MenuParentOptionViewModel>)ViewBag.Parents;
+    var destinations = (IReadOnlyList<ProyectoFinal.Services.MenuDestination>)ViewBag.Destinations;
+}
+<h1>@ViewData["Title"]</h1>
+<p class="intro">Define el lugar y, si corresponde, enlaza una pantalla implementada. Las opciones de acceso se administran por rol.</p>
+<form asp-action="Guardar" method="post" class="menu-editor">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <input type="hidden" asp-for="IdMenu" />
+    @if (nuevo)
+    {
+        <div class="form-group"><label asp-for="Codigo">Código técnico</label><input asp-for="Codigo" class="form-control" pattern="[a-z][a-z0-9-]{0,63}" maxlength="64" autocomplete="off" required /><small class="form-text">Único y estable; minúsculas, números y guiones. No se modifica después de crear.</small><span asp-validation-for="Codigo" class="text-danger"></span></div>
+    }
+    else
+    {
+        <input type="hidden" asp-for="Codigo" />
+        <div class="form-group"><label asp-for="Codigo">Código técnico</label><input value="@Model.Codigo" class="form-control" readonly /><small class="form-text">El código es estable para conservar las asignaciones de permisos.</small></div>
+    }
+    <div class="form-group"><label asp-for="Nombre">Nombre visible</label><input asp-for="Nombre" class="form-control" maxlength="100" required /><span asp-validation-for="Nombre" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="IdMenuPadre">Menú superior</label><select asp-for="IdMenuPadre" class="form-select"><option value="">Raíz</option>@foreach (var parent in parents) { <option value="@parent.Id">@(new string('—', parent.Profundidad)) @parent.Nombre</option> }</select><span asp-validation-for="IdMenuPadre" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="Destino">Pantalla de destino</label><select asp-for="Destino" class="form-select"><option value="">Sin enlace (agrupador)</option>@foreach (var destination in destinations) { <option value="@destination.Codigo">@destination.Nombre</option> }</select><small class="form-text">Solo aparecen rutas implementadas y registradas por el sistema. Un agrupador no concede permisos a sus hijos.</small><span asp-validation-for="Destino" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="Icono">Icono</label><select asp-for="Icono" class="form-select"><option value="">Usar icono de carpeta</option>@foreach (var icon in new[] { "grid", "shield", "layers", "users", "settings", "folder", "spark", "sliders", "bolt" }) { <option value="@icon">@icon</option> }</select><span asp-validation-for="Icono" class="text-danger"></span></div>
+    <div class="form-group"><label asp-for="Orden">Orden entre elementos del mismo nivel</label><input asp-for="Orden" class="form-control" type="number" min="0" max="9999" required /><span asp-validation-for="Orden" class="text-danger"></span></div>
+    <p class="auth-footnote">Máximo tres niveles. No se permiten ciclos, superiores inactivos ni dos menús que apunten a la misma pantalla. El cambio de destino queda bloqueado después de crear para preservar permisos.</p>
+    <div class="page-actions"><button class="btn btn-primary" type="submit">Guardar menú</button><a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a></div>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

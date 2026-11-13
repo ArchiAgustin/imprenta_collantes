@@ -19,10 +19,12 @@ public partial class Cliente
 
     [Column("correo")]
     [StringLength(100)]
+    [EmailAddress(ErrorMessage = "Ingresa un correo electrónico válido.")]
     public string? Correo { get; set; }
 
     [Column("telefono")]
     [StringLength(20)]
+    [Phone(ErrorMessage = "Ingresa un teléfono válido.")]
     public string? Telefono { get; set; }
 
     [Column("direccion")]

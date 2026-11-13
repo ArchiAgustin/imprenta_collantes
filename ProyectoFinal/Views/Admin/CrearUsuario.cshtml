@@ -1,0 +1,31 @@
+@model ProyectoFinal.Models.UsuarioCrearViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Crear usuario";
+}
+<h1>Crear usuario</h1>
+<p class="intro">La cuenta se crea sin roles para no conceder acceso por accidente. Asigna sus permisos después de verificar su función.</p>
+<form asp-action="CrearUsuario" method="post" class="user-editor">
+    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+    <div class="form-group">
+        <label asp-for="Correo">Correo electrónico</label>
+        <input asp-for="Correo" class="form-control" type="email" autocomplete="email" required />
+        <span asp-validation-for="Correo" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Password">Contraseña inicial</label>
+        <input asp-for="Password" class="form-control" autocomplete="new-password" required />
+        <span asp-validation-for="Password" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ConfirmarPassword">Confirmar contraseña inicial</label>
+        <input asp-for="ConfirmarPassword" class="form-control" autocomplete="new-password" required />
+        <span asp-validation-for="ConfirmarPassword" class="text-danger"></span>
+    </div>
+    <p class="auth-footnote">El sistema no enviará esta contraseña por correo. Entrégala por un canal seguro. La cuenta podrá iniciar sesión, pero no verá módulos hasta recibir un rol.</p>
+    <div class="page-actions">
+        <button class="btn btn-primary" type="submit">Crear cuenta</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+    </div>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

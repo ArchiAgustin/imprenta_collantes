@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProyectoFinal.Models;
 
-// Will be written together with Stock and sale transactions after inventory cutover.
+// Immutable movement ledger written in the same transaction as each stock change.
 [Table("Kardex")]
 public sealed class Kardex
 {

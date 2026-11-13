@@ -1,0 +1,19 @@
+@model IReadOnlyList<ProyectoFinal.Models.TramoDescuentoProducto>
+@{ Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml"; var producto = (ProyectoFinal.Models.Producto)ViewBag.Producto; ViewData["Title"] = "Tramos de descuento"; }
+<h1>Tramos de descuento · @producto.Nombre</h1>
+<p>Cada cantidad mínima aplica hasta el siguiente tramo. La recomendación siempre respeta el margen bruto mínimo del 10 % y requiere costo registrado.</p>
+<a asp-controller="Productoes" asp-action="Details" asp-route-id="@producto.IdProducto">Volver al producto</a>
+@if (TempData["Error"] is string error) { <p role="alert">@error</p> }
+@if (TempData["Success"] is string success) { <p role="status">@success</p> }
+<table class="table"><thead><tr><th>Cantidad mínima</th><th>Descuento sugerido</th><th></th></tr></thead><tbody>
+@foreach (var tramo in Model) {
+<tr><td>@tramo.CantidadMinima</td><td>@tramo.DescuentoPorcentaje.ToString("0.##") %</td><td>
+<form asp-action="Eliminar" method="post"><input type="hidden" name="productoId" value="@producto.IdProducto" /><input type="hidden" name="id" value="@tramo.Id" /><button class="btn btn-outline-danger" type="submit">Eliminar</button></form>
+</td></tr> }
+</tbody></table>
+<form asp-action="Agregar" method="post">
+<input type="hidden" name="productoId" value="@producto.IdProducto" />
+<label>Cantidad mínima <input name="cantidadMinima" type="number" min="1" max="1000000" required /></label>
+<label>Descuento sugerido (%) <input name="descuentoPorcentaje" type="number" min="0" max="99.99" step="0.01" required /></label>
+<button class="btn btn-primary" type="submit">Agregar tramo</button>
+</form>

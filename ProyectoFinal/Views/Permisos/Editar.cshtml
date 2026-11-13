@@ -6,7 +6,7 @@
 }
 
 <div class="page-heading-row">
-    <div><h1>Permisos: @Model.RolNombre</h1><p class="intro">Los menús sin permiso de lectura no aparecerán en el panel.</p></div>
+    <div><h1>Permisos: @Model.RolNombre</h1><p class="intro">Selecciona accesos para este rol. Los agrupadores solo organizan la vista: cada pantalla y operación se concede por separado.</p></div>
 </div>
 
 <form asp-action="Editar" asp-route-id="@Model.RolId" method="post">
@@ -21,7 +21,8 @@
             {
                 <tr>
                     <th scope="row">
-                        @Model.Menus[index].Nombre
+                        <span class="permission-menu-label" style="--menu-depth:@Model.Menus[index].Profundidad">@Model.Menus[index].Nombre</span>
+                        <small class="permission-destination">@Model.Menus[index].ContextoJerarquia</small>
                         <input type="hidden" asp-for="Menus[index].MenuId" />
                         <input type="hidden" asp-for="Menus[index].Codigo" />
                         <input type="hidden" asp-for="Menus[index].Nombre" />

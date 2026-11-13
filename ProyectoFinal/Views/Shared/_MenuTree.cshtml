@@ -1,0 +1,41 @@
+@model IReadOnlyList<ProyectoFinal.Services.MenuNavigationItem>
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var onPanel = ViewContext.RouteData.Values["page"]?.ToString() == "/Usuario/Panel";
+    bool IsCurrent(ProyectoFinal.Services.MenuNavigationItem item) =>
+        string.Equals(item.ControllerNombre, currentController, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(item.ActionNombre ?? "Index", currentAction ?? "Index", StringComparison.OrdinalIgnoreCase);
+    bool HasCurrent(ProyectoFinal.Services.MenuNavigationItem item) =>
+        IsCurrent(item) || item.Children.Any(HasCurrent);
+}
+@foreach (var menu in Model)
+{
+    var hasChildren = menu.Children.Count > 0;
+    var current = IsCurrent(menu);
+    var expanded = !onPanel && HasCurrent(menu);
+    if (hasChildren)
+    {
+        var target = $"panel-menu-{menu.IdMenu}";
+        <div class="panel-menu-branch">
+            <div class="panel-menu-branch-heading">
+                @if (menu.PuedeNavegar && menu.ControllerNombre is not null)
+                {
+                    <a class="panel-link panel-menu-parent @(current ? "is-current" : "")" asp-area="" asp-controller="@menu.ControllerNombre" asp-action="@menu.ActionNombre" aria-current="@(current ? "page" : null)" title="@menu.Nombre"><partial name="_MenuIcon" model="menu.Icono" /><span class="panel-menu-text">@menu.Nombre</span></a>
+                }
+                else
+                {
+                    <span class="panel-menu-parent-label" title="@menu.Nombre"><partial name="_MenuIcon" model="menu.Icono" /><span class="panel-menu-text">@menu.Nombre</span></span>
+                }
+                <button class="panel-menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#@target" aria-expanded="@expanded.ToString().ToLowerInvariant()" aria-controls="@target" aria-label="@(expanded ? "Contraer" : "Expandir") @menu.Nombre"><span class="visually-hidden">@(expanded ? "Contraer" : "Expandir") @menu.Nombre</span></button>
+            </div>
+            <div id="@target" class="collapse @(expanded ? "show" : "")">
+                <div class="panel-menu-children"><partial name="_MenuTree" model="menu.Children" /></div>
+            </div>
+        </div>
+    }
+    else if (menu.PuedeNavegar && menu.ControllerNombre is not null)
+    {
+        <a class="panel-link @(current ? "is-current" : "")" asp-area="" asp-controller="@menu.ControllerNombre" asp-action="@menu.ActionNombre" aria-current="@(current ? "page" : null)" title="@menu.Nombre"><partial name="_MenuIcon" model="menu.Icono" /><span class="panel-menu-text">@menu.Nombre</span></a>
+    }
+}

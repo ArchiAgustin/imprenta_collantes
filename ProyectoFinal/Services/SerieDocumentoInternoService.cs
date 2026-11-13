@@ -9,10 +9,21 @@ namespace ProyectoFinal.Services;
 public sealed record NumeroDocumentoInterno(string Serie, int Correlativo, int Digitos);
 public sealed record ResultadoSerie(bool Exito, string Mensaje);
 
-public sealed class SerieDocumentoInternoService(ApplicationDbContext db)
+public sealed class SerieDocumentoInternoService(ApplicationDbContext db) : ISerieDocumentoInternoService
 {
     public const string Cotizacion = "Cotizacion";
     public const string Venta = "Venta";
+
+    public async Task<IReadOnlyList<SerieDocumentoInterno>> ListarAsync() => await db.SeriesDocumentoInterno.AsNoTracking()
+        .Include(item => item.TipoComprobanteSunat).OrderBy(item => item.TipoDocumento)
+        .ThenByDescending(item => item.Activa).ThenBy(item => item.Serie).ToListAsync();
+
+    public Task<SerieDocumentoInterno?> ObtenerAsync(int id) => db.SeriesDocumentoInterno.AsNoTracking()
+        .FirstOrDefaultAsync(item => item.IdSerieDocumentoInterno == id);
+
+    public async Task<IReadOnlyList<TipoDocumentoPagoSunat>> TiposComprobanteActivosAsync() =>
+        await db.TiposDocumentoPagoSunat.AsNoTracking().Where(item => item.Estado)
+            .OrderBy(item => item.CodigoSunat).ThenBy(item => item.Descripcion).ToListAsync();
 
     // Call inside the commercial document transaction. The lock is owned by that
     // transaction, so rollback restores the counter together with the document.
@@ -66,11 +77,18 @@ SELECT @result AS [Value];").ToListAsync();
         return new NumeroDocumentoInterno(serie.Serie, correlativo, serie.Digitos);
     }
 
-    public async Task<ResultadoSerie> GuardarAsync(int? id, string tipo, string codigo, int siguiente, int digitos, bool activar, System.Security.Claims.ClaimsPrincipal user)
+    public async Task<ResultadoSerie> GuardarAsync(int? id, string tipo, string codigo, int siguiente, int digitos, bool activar, System.Security.Claims.ClaimsPrincipal user, int? idTipoComprobanteSunat = null)
     {
         if (tipo is not (Cotizacion or Venta) || codigo is null || !Regex.IsMatch(codigo, "^[A-Z0-9]{1,8}$")
             || siguiente < 1 || siguiente == int.MaxValue || digitos is < 4 or > 10)
             return new(false, "Usa una serie de 1 a 8 letras mayúsculas o números, correlativo positivo y de 4 a 10 dígitos.");
+        if (tipo == Venta && idTipoComprobanteSunat is null)
+            return new(false, "Selecciona el tipo de comprobante SUNAT asociado a esta serie interna de venta.");
+        if (tipo == Cotizacion && idTipoComprobanteSunat is not null)
+            return new(false, "Las cotizaciones internas no se asocian a comprobantes de pago SUNAT.");
+        if (idTipoComprobanteSunat is { } typeId
+            && !await db.TiposDocumentoPagoSunat.AnyAsync(item => item.IdTipoDocumentoPago == typeId && item.Estado))
+            return new(false, "Selecciona un tipo de comprobante SUNAT activo del catálogo.");
         await using var transaction = db.Database.IsRelational()
             ? await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted) : null;
         await BloquearAsync(tipo);
@@ -99,6 +117,7 @@ SELECT @result AS [Value];").ToListAsync();
         config ??= new SerieDocumentoInterno { TipoDocumento = tipo };
         config.Serie = codigo;
         config.Digitos = digitos;
+        config.IdTipoComprobanteSunat = idTipoComprobanteSunat;
         config.SiguienteCorrelativo = siguiente;
         if (activar) config.Activa = true;
         if (activar && id is not null && db.Database.IsRelational())
@@ -107,7 +126,7 @@ SELECT @result AS [Value];").ToListAsync();
         await db.SaveChangesAsync();
         db.AuditoriaOperacion.Add(AuditoriaFactory.Crear(user, "SerieDocumentoInterno", config.IdSerieDocumentoInterno,
             id is null ? "Serie creada" : "Serie configurada", null, codigo,
-            $"Tipo {tipo}; próximo {siguiente}; dígitos {digitos}; activa {config.Activa}."));
+            $"Tipo interno {tipo}; tipo SUNAT asociado {idTipoComprobanteSunat?.ToString() ?? "no aplica"}; próximo {siguiente}; dígitos {digitos}; activa {config.Activa}."));
         await db.SaveChangesAsync();
         if (transaction is not null) await transaction.CommitAsync();
         return new(true, $"Serie {codigo} guardada. Próximo número: {codigo}-{siguiente.ToString($"D{digitos}")}.");

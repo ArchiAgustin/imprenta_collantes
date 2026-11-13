@@ -20,7 +20,7 @@
 <div class="table-responsive"><table class="table"><thead><tr><th>Artículo / servicio</th><th>Tipo</th><th>Cantidad</th></tr></thead><tbody>
     @foreach (var line in Model.DetallePedidos)
     {
-        <tr><td>@(line.ProductoNombre ?? line.IdProductoNavigation?.Nombre ?? "Producto")</td><td>@(line.EsServicio ? "Servicio" : "Artículo")</td><td>@line.Cantidad</td></tr>
+        <tr><td>@(line.ProductoNombre ?? line.IdProductoNavigation?.Nombre ?? "Producto")</td><td>@(line.EsServicio ? "Servicio" : "Artículo")</td><td>@line.Cantidad × @(line.PresentacionDescripcion ?? "Unidad base")@if (!line.EsServicio && line.FactorPresentacion != 1m) { <small class="d-block">= @(line.Cantidad * line.FactorPresentacion) @(line.UnidadBaseDescripcion ?? "unidades base")</small> }</td></tr>
     }
 </tbody></table></div>
 

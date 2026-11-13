@@ -8,7 +8,8 @@ public sealed class MenuAuthorizationFilter(IMenuAccessService menuAccess) : IAs
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var controller = context.RouteData.Values["controller"]?.ToString() ?? string.Empty;
-        if (!menuAccess.RequiresMenuPermission(controller)) return;
+        var action = context.RouteData.Values["action"]?.ToString() ?? string.Empty;
+        if (!menuAccess.RequiresMenuPermission(controller, action)) return;
 
         var user = context.HttpContext.User;
         if (user.Identity?.IsAuthenticated != true)
@@ -17,7 +18,6 @@ public sealed class MenuAuthorizationFilter(IMenuAccessService menuAccess) : IAs
             return;
         }
 
-        var action = context.RouteData.Values["action"]?.ToString() ?? string.Empty;
         if (!await menuAccess.CanAsync(user, controller, action, context.HttpContext.Request.Method))
             context.Result = new ForbidResult();
     }

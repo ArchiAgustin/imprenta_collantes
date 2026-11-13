@@ -1,0 +1,31 @@
+@model ProyectoFinal.Models.TransferenciasInventarioViewModel
+@{
+    Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
+    ViewData["Title"] = "Transferencias";
+    var peru = System.Globalization.CultureInfo.GetCultureInfo("es-PE");
+}
+<div class="page-heading-row"><div><h1>Transferencias</h1><p class="intro">Mueve existencias entre almacenes con salida y entrada registradas en el kárdex.</p></div><a class="btn btn-outline-secondary" asp-controller="Inventario" asp-action="Index">Volver a inventario</a></div>
+@if (Model.Formulario.Almacenes.Count < 2)
+{
+    <div class="empty-state" role="status"><strong>Se requieren dos almacenes listos.</strong><p>Activa al menos dos almacenes y registra el corte inicial de cada uno antes de transferir.</p></div>
+}
+else
+{
+    <section class="inventory-stage"><h2>Nueva transferencia</h2>
+        <form asp-action="Crear" method="post" class="inventory-entry-form">
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+            <div class="form-group"><label for="IdAlmacenOrigen">Desde</label><select id="IdAlmacenOrigen" name="IdAlmacenOrigen" class="form-select" required><option value="">Selecciona origen</option>@foreach (var item in Model.Formulario.Almacenes) { <option value="@item.IdAlmacen">@item.Nombre</option> }</select></div>
+            <div class="form-group"><label for="IdAlmacenDestino">Hacia</label><select id="IdAlmacenDestino" name="IdAlmacenDestino" class="form-select" required><option value="">Selecciona destino</option>@foreach (var item in Model.Formulario.Almacenes) { <option value="@item.IdAlmacen">@item.Nombre</option> }</select></div>
+            <div class="form-group"><label for="IdProducto">Artículo</label><select id="IdProducto" name="IdProducto" class="form-select" required><option value="">Selecciona artículo</option>@foreach (var item in Model.Formulario.Productos) { <option value="@item.IdProducto">@item.Nombre</option> }</select></div>
+            <div class="form-group"><label for="CantidadBase">Cantidad en unidad base</label><input id="CantidadBase" name="CantidadBase" type="number" min="0.001" step="0.001" class="form-control" required /></div>
+            <div class="form-group"><label for="Motivo">Motivo / referencia</label><input id="Motivo" name="Motivo" maxlength="500" class="form-control" required /></div>
+            <button class="btn btn-primary" type="submit">Confirmar transferencia</button>
+        </form>
+    </section>
+}
+<section class="inventory-stage"><h2>Historial reciente</h2>
+@if (Model.Historial.Count == 0) { <p class="empty-state">Aún no hay transferencias registradas.</p> }
+else { <div class="table-responsive"><table class="table"><thead><tr><th>Fecha (Perú)</th><th>Artículo</th><th>Origen</th><th>Destino</th><th class="text-end">Cantidad</th><th>Motivo</th></tr></thead><tbody>
+@foreach (var item in Model.Historial) { <tr><td>@item.FechaUtc.ToOffset(TimeSpan.FromHours(-5)).ToString("dd/MM/yyyy HH:mm")</td><th>@item.Producto.Nombre</th><td>@item.AlmacenOrigen.Nombre</td><td>@item.AlmacenDestino.Nombre</td><td class="text-end">@item.CantidadBase.ToString("0.###", peru)</td><td>@item.Motivo</td></tr> }
+</tbody></table></div> }
+</section>

@@ -7,6 +7,7 @@ namespace ProyectoFinal.Services;
 public sealed record ReferenciaPrecio(
     int IdProducto,
     string NombreProducto,
+    string Presentacion,
     int CantidadSolicitada,
     decimal? PrecioCatalogoSinIgv,
     decimal? PrecioMinimoSinIgv,
@@ -14,7 +15,11 @@ public sealed record ReferenciaPrecio(
     decimal? UltimoPrecioClienteSinIgv,
     int? UltimaCantidadCliente,
     decimal? PrecioHistoricoAplicableSinIgv,
-    bool CostoEstimado);
+    bool CostoEstimado,
+    decimal? PrecioRecomendadoSinIgv,
+    decimal? DescuentoTramoPorcentaje,
+    int? CantidadMinimaTramo,
+    string? MotivoRecomendacion);
 
 public sealed class SugerenciaPrecioService(ApplicationDbContext context)
 {
@@ -27,6 +32,8 @@ public sealed class SugerenciaPrecioService(ApplicationDbContext context)
         var productos = await context.Producto.AsNoTracking()
             .Where(producto => ids.Contains(producto.IdProducto))
             .ToDictionaryAsync(producto => producto.IdProducto);
+        var tramos = await context.TramosDescuentoProducto.AsNoTracking()
+            .Where(item => ids.Contains(item.IdProducto)).ToListAsync();
 
         // Historic prices stay local. Only confirmed sales of the selected client and
         // product are considered; no customer data or costs are sent to Groq.
@@ -39,6 +46,7 @@ public sealed class SugerenciaPrecioService(ApplicationDbContext context)
                 linea.IdDetalleVenta,
                 linea.PrecioUnitario,
                 linea.Cantidad,
+                linea.FactorPresentacion,
                 Fecha = linea.Venta!.FechaVentaUtc
             }).ToListAsync();
 
@@ -46,13 +54,14 @@ public sealed class SugerenciaPrecioService(ApplicationDbContext context)
         foreach (var linea in lineas)
         {
             if (linea.ProductoId is not { } id || !productos.TryGetValue(id, out var producto)) continue;
-            var precioCatalogo = producto.Precio is > 0m ? producto.Precio : null;
-            var minimo = CalcularMinimo(producto.CostoUnitarioSinIgv);
+            var factor = linea.FactorPresentacion > 0m ? linea.FactorPresentacion : 1m;
+            var precioCatalogo = producto.Precio is > 0m ? producto.Precio * factor : null;
+            var minimo = CalcularMinimo(producto.CostoUnitarioSinIgv is { } cost ? cost * factor : null);
             decimal? maximo = null;
             if (minimo is { } piso && precioCatalogo is { } precio && precio >= piso)
                 maximo = decimal.Floor((precio - piso) / precio * 10_000m) / 100m;
 
-            var ultima = anteriores.Where(item => item.IdProducto == id)
+            var ultima = anteriores.Where(item => item.IdProducto == id && item.FactorPresentacion == factor)
                 .OrderByDescending(item => item.Fecha)
                 .ThenByDescending(item => item.IdDetalleVenta)
                 .FirstOrDefault();
@@ -64,9 +73,26 @@ public sealed class SugerenciaPrecioService(ApplicationDbContext context)
                 && ultima.PrecioUnitario < catalogo)
                 referenciaAplicable = ultima.PrecioUnitario;
 
+            var tramo = tramos.Where(item => item.IdProducto == id && item.CantidadMinima <= linea.Cantidad)
+                .OrderByDescending(item => item.CantidadMinima).FirstOrDefault();
+            decimal? recomendado = null;
+            string? motivo = null;
+            if (tramo is not null && minimo is { } pisoSeguro && precioCatalogo is { } basePrecio && basePrecio >= pisoSeguro)
+            {
+                var precioPorTramo = decimal.Ceiling(basePrecio * (1m - tramo.DescuentoPorcentaje / 100m) * 100m) / 100m;
+                recomendado = Math.Max(precioPorTramo, pisoSeguro);
+                if (referenciaAplicable is { } precioCliente)
+                    recomendado = Math.Max(recomendado.Value, precioCliente);
+                motivo = $"Tramo desde {tramo.CantidadMinima} unidades: {tramo.DescuentoPorcentaje:0.##} %; "
+                    + (referenciaAplicable is null ? "sin historial comparable; " : "se consideró la última venta comparable; ")
+                    + (recomendado == pisoSeguro ? "limitado por el margen mínimo del 10 %." : "respeta el margen mínimo del 10 %.");
+            }
+
             resultado.Add(new ReferenciaPrecio(
-                id, producto.Nombre ?? "Producto sin nombre", linea.Cantidad, precioCatalogo,
-                minimo, maximo, precioAnterior, ultima?.Cantidad, referenciaAplicable, producto.EsServicio));
+                id, producto.Nombre ?? "Producto sin nombre", linea.PresentacionDescripcion ?? "Unidad base",
+                linea.Cantidad, precioCatalogo,
+                minimo, maximo, precioAnterior, ultima?.Cantidad, referenciaAplicable, producto.EsServicio,
+                recomendado, tramo?.DescuentoPorcentaje, tramo?.CantidadMinima, motivo));
         }
         return resultado;
     }
