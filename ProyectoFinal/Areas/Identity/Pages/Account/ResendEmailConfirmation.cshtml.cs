@@ -47,6 +47,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
             /// </summary>
             [Required]
             [EmailAddress]
+            [Display(Name = "Correo electrónico")]
             public string Email { get; set; }
         }
 
@@ -64,7 +65,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
             var user = await _userManager.FindByEmailAsync(Input.Email);
             if (user == null)
             {
-                ModelState.AddModelError(string.Empty, "Verification email sent. Please check your email.");
+                ModelState.AddModelError(string.Empty, "Si la cuenta existe, revisa tu correo para confirmar el registro.");
                 return Page();
             }
 
@@ -78,10 +79,10 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
                 protocol: Request.Scheme);
             await _emailSender.SendEmailAsync(
                 Input.Email,
-                "Confirm your email",
-                $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                "Confirma tu correo electrónico",
+                $"Confirma tu cuenta <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>desde este enlace</a>.");
 
-            ModelState.AddModelError(string.Empty, "Verification email sent. Please check your email.");
+            ModelState.AddModelError(string.Empty, "Si la cuenta existe, revisa tu correo para confirmar el registro.");
             return Page();
         }
     }

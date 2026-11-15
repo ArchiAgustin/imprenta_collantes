@@ -49,18 +49,19 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
             [Required]
-            [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+            [StringLength(100, ErrorMessage = "La contraseña debe tener entre {2} y {1} caracteres.", MinimumLength = 6)]
             [DataType(DataType.Password)]
-            [Display(Name = "New password")]
+            [Display(Name = "Nueva contraseña")]
             public string NewPassword { get; set; }
 
             /// <summary>
             ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
+            [Required]
             [DataType(DataType.Password)]
-            [Display(Name = "Confirm new password")]
-            [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
+            [Display(Name = "Confirmar nueva contraseña")]
+            [Compare("NewPassword", ErrorMessage = "La nueva contraseña y su confirmación no coinciden.")]
             public string ConfirmPassword { get; set; }
         }
 
@@ -69,7 +70,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             var hasPassword = await _userManager.HasPasswordAsync(user);
@@ -92,7 +93,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             var addPasswordResult = await _userManager.AddPasswordAsync(user, Input.NewPassword);
@@ -106,7 +107,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             }
 
             await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "Your password has been set.";
+            StatusMessage = "Se configuró la contraseña.";
 
             return RedirectToPage();
         }

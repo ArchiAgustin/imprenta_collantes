@@ -1,10 +1,12 @@
 @model ProyectoFinal.Models.ParametrosCorreoViewModel
+@using ProyectoFinal.Models
 @{
     Layout = "~/Areas/Identity/Pages/Shared/_PanelLayout.cshtml";
     ViewData["Title"] = "Parámetros";
+    var groq = (ParametrosGroqViewModel)ViewBag.GroqConfiguracion;
 }
 
-<div class="page-heading-row"><div><h1>Parámetros</h1><p class="intro">Configura el correo saliente utilizado por Identity para recuperación de contraseña.</p></div></div>
+<div class="page-heading-row"><div><h1>Parámetros</h1><p class="intro">Configura el correo saliente y el asistente de pre-cotización.</p></div></div>
 <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
 <section class="form-section" aria-labelledby="smtp-title">
     <h2 id="smtp-title">Correo SMTP</h2>
@@ -20,6 +22,19 @@
         </div>
         <div class="form-check"><input asp-for="UsarTls" class="form-check-input" /><label asp-for="UsarTls" class="form-check-label"></label></div>
         <div class="page-actions"><button type="submit" class="btn btn-primary">Guardar parámetros</button></div>
+    </form>
+</section>
+<section class="form-section" aria-labelledby="groq-title">
+    <h2 id="groq-title">Pre-cotización con IA · Groq</h2>
+    <p class="auth-footnote">La clave se cifra antes de guardarse y no vuelve a mostrarse. Al guardar una nueva clave se reemplaza la anterior. El texto revisado de las solicitudes se envía a Groq.</p>
+    <form asp-action="GuardarGroq" method="post" class="identity-form">
+        <div class="form-group">
+            <label for="groq-api-key">Clave API de Groq</label>
+            <input id="groq-api-key" name="ApiKey" type="password" class="form-control" autocomplete="new-password" maxlength="256" aria-describedby="groq-key-help" aria-invalid="@(ViewData.ModelState.ContainsKey("ApiKey") && !ViewData.ModelState.IsValid ? "true" : "false")" />
+            <span class="text-danger">@Html.ValidationMessage("ApiKey")</span>
+            <p id="groq-key-help" class="auth-footnote">@(groq.TieneClaveGuardada ? "Hay una clave configurada. Ingresa otra para reemplazarla." : "Aún no hay una clave configurada. Crea una en Groq Console.")</p>
+        </div>
+        <div class="page-actions"><button type="submit" class="btn btn-primary">Guardar clave de Groq</button></div>
     </form>
 </section>
 <section class="form-section" aria-labelledby="test-title">

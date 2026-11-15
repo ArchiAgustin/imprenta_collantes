@@ -48,7 +48,7 @@ Abre `http://localhost:5092`. La base actual contiene `Archiagustinulloaruiz@gma
 
 ## Configurar Groq (opcional)
 
-Sigue la [guía paso a paso para configurar la API key de Groq](Documentacion/CONFIGURAR_GROQ_API_KEY.md) fuera del repositorio, sin pegar la clave en el chat ni en el historial de la terminal. El modelo predeterminado es `openai/gpt-oss-20b`, compatible con salida JSON Schema estricta; puede cambiarse mediante `Groq:Model` solo por otro modelo compatible. La aplicación nunca envía la clave al navegador. **Sin clave, el asistente avisa y se puede cotizar manualmente.** Antes de usar datos reales revisa las políticas de privacidad aplicables al envío de texto revisado a un tercero.
+Configura la clave API de Groq desde **Administración → Configuración → Parámetros → Pre-cotización con IA** con una cuenta Admin; se cifra con Data Protection antes de guardarse y nunca se vuelve a mostrar. La clave de la base tiene prioridad sobre `Groq:ApiKey` en [user-secrets o variables de entorno](Documentacion/CONFIGURAR_GROQ_API_KEY.md), que siguen sirviendo como alternativa si aún no se guardó en Parámetros. Antes de usar la pantalla en una base existente, respáldala y aplica explícitamente la migración `20261114120000_GroqConfigurationParameters` con `--migrate-only`; el arranque normal no migra. El modelo predeterminado es `openai/gpt-oss-20b`, compatible con salida JSON Schema estricta; puede cambiarse mediante `Groq:Model` solo por otro modelo compatible. La aplicación nunca envía la clave al navegador. **Sin clave, el asistente avisa y se puede cotizar manualmente.** Antes de usar datos reales revisa las políticas de privacidad aplicables al envío de texto revisado a un tercero.
 
 ## Planificación propuesta
 

@@ -11,6 +11,7 @@ namespace ProyectoFinal.Controllers;
 [Authorize(Roles = "Admin")]
 public sealed class ParametrosController(
     IParametrosCorreoService settingsService,
+    IConfiguracionGroqService groqSettings,
     IEmailSender emailSender,
     UserManager<IdentityUser> userManager,
     ILogger<ParametrosController> logger) : Controller
@@ -19,6 +20,7 @@ public sealed class ParametrosController(
     public async Task<IActionResult> Index()
     {
         var model = await settingsService.ObtenerAsync();
+        ViewBag.GroqConfiguracion = new ParametrosGroqViewModel { TieneClaveGuardada = await groqSettings.TieneClaveAsync() };
         await SetTestAddressAsync(model);
         return View(model);
     }
@@ -33,12 +35,34 @@ public sealed class ParametrosController(
         if (!ModelState.IsValid)
         {
             model.TieneContrasenaGuardada = await settingsService.TieneContrasenaAsync();
+            ViewBag.GroqConfiguracion = new ParametrosGroqViewModel { TieneClaveGuardada = await groqSettings.TieneClaveAsync() };
             await SetTestAddressAsync(model);
             return View("Index", model);
         }
 
         await settingsService.GuardarAsync(model);
         TempData["Success"] = "Se guardaron los parámetros SMTP. Envía un correo de prueba para comprobar la conexión.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> GuardarGroq(ParametrosGroqViewModel model)
+    {
+        var key = model.ApiKey?.Trim();
+        if (string.IsNullOrWhiteSpace(key) || key.Any(char.IsWhiteSpace))
+            ModelState.AddModelError(nameof(model.ApiKey), "Ingresa una clave de Groq válida, sin espacios.");
+
+        if (!ModelState.IsValid)
+        {
+            model.TieneClaveGuardada = await groqSettings.TieneClaveAsync();
+            ViewBag.GroqConfiguracion = model;
+            var correo = await settingsService.ObtenerAsync();
+            await SetTestAddressAsync(correo);
+            return View("Index", correo);
+        }
+
+        await groqSettings.GuardarClaveAsync(key!);
+        TempData["Success"] = "Se guardó la clave de Groq. Ya puedes probar la pre-cotización con IA.";
         return RedirectToAction(nameof(Index));
     }
 

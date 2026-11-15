@@ -47,6 +47,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             /// </summary>
             [Required]
             [DataType(DataType.Password)]
+            [Display(Name = "Contraseña actual")]
             public string Password { get; set; }
         }
 
@@ -61,7 +62,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             RequirePassword = await _userManager.HasPasswordAsync(user);
@@ -73,7 +74,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             RequirePassword = await _userManager.HasPasswordAsync(user);
@@ -81,7 +82,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             {
                 if (!await _userManager.CheckPasswordAsync(user, Input.Password))
                 {
-                    ModelState.AddModelError(string.Empty, "Incorrect password.");
+                    ModelState.AddModelError(string.Empty, "La contraseña no es correcta.");
                     return Page();
                 }
             }

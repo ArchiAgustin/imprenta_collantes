@@ -11,7 +11,7 @@ public interface ISolicitudExtractor
     Task<ResultadoExtraccion> ExtraerAsync(string textoRevisado, CancellationToken cancellationToken);
 }
 
-public sealed class GroqSolicitudExtractor(HttpClient http, IConfiguration configuration) : ISolicitudExtractor
+public sealed class GroqSolicitudExtractor(HttpClient http, IConfiguration configuration, IConfiguracionGroqService? groqSettings = null) : ISolicitudExtractor
 {
     private const string Endpoint = "https://api.groq.com/openai/v1/chat/completions";
     private const string DefaultModel = "openai/gpt-oss-20b";
@@ -46,7 +46,7 @@ public sealed class GroqSolicitudExtractor(HttpClient http, IConfiguration confi
             || ProteccionSolicitudService.Anonimizar(textoRevisado) != textoRevisado.Trim())
             return new(false, "El texto contiene datos que deben ocultarse y revisarse antes de enviarlo.");
 
-        var key = configuration["Groq:ApiKey"];
+        var key = groqSettings is null ? configuration["Groq:ApiKey"] : await groqSettings.ObtenerClaveAsync();
         if (string.IsNullOrWhiteSpace(key))
             return new(false, "El asistente no está configurado. Continúa con la cotización manual.");
         key = key.Trim();

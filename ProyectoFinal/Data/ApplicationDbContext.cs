@@ -51,11 +51,14 @@ namespace ProyectoFinal.Data
         public DbSet<ZonaTipoSunat> TiposZonaSunat { get; set; } = default!;
         public DbSet<EstadoEnvioSunat> EstadosEnvioSunat { get; set; } = default!;
         public DbSet<ConfiguracionCorreo> ConfiguracionCorreo { get; set; } = default!;
+        public DbSet<ConfiguracionGroq> ConfiguracionGroq { get; set; } = default!;
         public DbSet<TramoDescuentoProducto> TramosDescuentoProducto { get; set; } = default!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<ConfiguracionGroq>().ToTable(table =>
+                table.HasCheckConstraint("CK_ConfiguracionGroq_Id", "[id] = 1"));
 
             modelBuilder.Entity<Producto>().Property(producto => producto.EsServicio).HasDefaultValue(false);
             modelBuilder.Entity<TramoDescuentoProducto>().HasOne(item => item.Producto).WithMany()

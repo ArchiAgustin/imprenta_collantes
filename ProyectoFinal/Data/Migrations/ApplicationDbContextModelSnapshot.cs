@@ -41,6 +41,15 @@ namespace ProyectoFinal.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ProyectoFinal.Models.ConfiguracionGroq", b =>
+                {
+                    b.Property<int>("Id").HasColumnType("int").HasColumnName("id");
+                    b.Property<DateTimeOffset>("ActualizadoUtc").HasColumnType("datetimeoffset").HasColumnName("actualizadoUtc");
+                    b.Property<string>("ApiKeyProtegida").IsRequired().HasMaxLength(2000).HasColumnType("nvarchar(2000)").HasColumnName("apiKeyProtegida");
+                    b.HasKey("Id");
+                    b.ToTable("ConfiguracionGroq", t => t.HasCheckConstraint("CK_ConfiguracionGroq_Id", "[id] = 1"));
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")

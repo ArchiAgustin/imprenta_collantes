@@ -180,13 +180,15 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
         {
             [Required]
             [EmailAddress]
+            [Display(Name = "Correo electrónico")]
             public string Email { get; set; }
 
             [Required]
             [DataType(DataType.Password)]
+            [Display(Name = "Contraseña")]
             public string Password { get; set; }
 
-            [Display(Name = "Remember me?")]
+            [Display(Name = "Recordar mi sesión")]
             public bool RememberMe { get; set; }
         }
 
@@ -236,7 +238,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
                 }
                 else
                 {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                    ModelState.AddModelError(string.Empty, "No pudimos iniciar sesión. Revisa tu correo y contraseña e inténtalo de nuevo.");
                     return Page();
                 }
             }

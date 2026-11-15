@@ -2194,7 +2194,7 @@ public class NavigationTests
         Assert.Equal(HttpStatusCode.Redirect, firstUse.StatusCode);
         var replay = await Reset("AnotherPassword123!");
         Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
-        Assert.Contains("Invalid token", WebUtility.HtmlDecode(await replay.Content.ReadAsStringAsync()));
+        Assert.Contains("El enlace ya no es válido. Solicita uno nuevo.", WebUtility.HtmlDecode(await replay.Content.ReadAsStringAsync()));
         using var verifyScope = factory.Services.CreateScope();
         var verifyUsers = verifyScope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
         var updated = await verifyUsers.FindByEmailAsync(email);
@@ -2238,7 +2238,7 @@ public class NavigationTests
             ["__RequestVerificationToken"] = Token(resetForm)
         }));
         Assert.Equal(HttpStatusCode.OK, expired.StatusCode);
-        Assert.Contains("Invalid token", WebUtility.HtmlDecode(await expired.Content.ReadAsStringAsync()));
+        Assert.Contains("El enlace ya no es válido. Solicita uno nuevo.", WebUtility.HtmlDecode(await expired.Content.ReadAsStringAsync()));
     }
 
     [Fact]

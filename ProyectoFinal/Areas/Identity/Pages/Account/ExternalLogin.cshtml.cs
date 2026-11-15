@@ -83,6 +83,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
             /// </summary>
             [Required]
             [EmailAddress]
+            [Display(Name = "Correo electrónico")]
             public string Email { get; set; }
         }
         
@@ -101,13 +102,13 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
             returnUrl = returnUrl ?? Url.Content("~/");
             if (remoteError != null)
             {
-                ErrorMessage = $"Error from external provider: {remoteError}";
+                ErrorMessage = "No se pudo iniciar sesión con el proveedor externo. Inténtalo de nuevo.";
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
             var info = await _signInManager.GetExternalLoginInfoAsync();
             if (info == null)
             {
-                ErrorMessage = "Error loading external login information.";
+                ErrorMessage = "No se pudo recuperar el inicio de sesión externo. Inténtalo de nuevo.";
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
 
@@ -145,7 +146,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
             var info = await _signInManager.GetExternalLoginInfoAsync();
             if (info == null)
             {
-                ErrorMessage = "Error loading external login information during confirmation.";
+                ErrorMessage = "No se pudo confirmar el inicio de sesión externo. Inténtalo de nuevo.";
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
 
@@ -173,8 +174,8 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
                             values: new { area = "Identity", userId = userId, code = code },
                             protocol: Request.Scheme);
 
-                        await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                            $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                        await _emailSender.SendEmailAsync(Input.Email, "Confirma tu correo electrónico",
+                            $"Confirma tu cuenta <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>desde este enlace</a>.");
 
                         // If account confirmation is required, we need to show the link if we don't have a real email sender
                         if (_userManager.Options.SignIn.RequireConfirmedAccount)

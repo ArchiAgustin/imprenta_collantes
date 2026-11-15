@@ -6,6 +6,9 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
+using ProyectoFinal.Localization;
 using ProyectoFinal.Data;
 using ProyectoFinal.Services;
 
@@ -58,6 +61,7 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
              options.Lockout.AllowedForNewUsers = true;
         })
     .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddErrorDescriber<SpanishIdentityErrorDescriber>()
     .AddDefaultTokenProviders()
     .AddDefaultUI();
 
@@ -76,6 +80,8 @@ builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
     options.Filters.AddService<MenuAuthorizationFilter>();
+    options.ModelMetadataDetailsProviders.Add(new SpanishValidationMetadataProvider());
+    SpanishModelBindingMessages.Configure(options.ModelBindingMessageProvider);
 });
 builder.Services.AddRazorPages();
 builder.Services.AddDistributedMemoryCache();
@@ -112,6 +118,7 @@ builder.Services.AddScoped<IClientesCatalogoService, ClientesCatalogoService>();
 builder.Services.AddScoped<IProveedoresCatalogoService, ProveedoresCatalogoService>();
 builder.Services.AddScoped<IProductosCatalogoService, ProductosCatalogoService>();
 builder.Services.AddScoped<IParametrosCorreoService, ParametrosCorreoService>();
+builder.Services.AddScoped<IConfiguracionGroqService, ConfiguracionGroqService>();
 builder.Services.AddScoped<IAlmacenesAdminService, AlmacenesAdminService>();
 builder.Services.AddScoped<IAuditoriaConsultaService, AuditoriaConsultaService>();
 builder.Services.AddScoped<ITallerConsultaService, TallerConsultaService>();
@@ -128,6 +135,12 @@ builder.Services.AddHttpClient<ISolicitudExtractor, GroqSolicitudExtractor>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+        await context.HttpContext.Response.WriteAsync("Se alcanzó el límite de solicitudes. Espera un momento e inténtalo de nuevo.", cancellationToken);
+    };
     options.AddPolicy("groq", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "sin-usuario",
         _ => new FixedWindowRateLimiterOptions
@@ -224,6 +237,13 @@ using (var scope = app.Services.CreateScope())
 
 
 // Configure the HTTP request pipeline.
+var peruCulture = CultureInfo.GetCultureInfo("es-PE");
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(peruCulture),
+    SupportedCultures = [peruCulture],
+    SupportedUICultures = [peruCulture]
+});
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
@@ -239,6 +259,18 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseStatusCodePages(async status =>
+{
+    var response = status.HttpContext.Response;
+    var message = response.StatusCode switch
+    {
+        StatusCodes.Status404NotFound => "No se encontró la página solicitada. Revisa la dirección e inténtalo de nuevo.",
+        StatusCodes.Status403Forbidden => "No tienes permiso para acceder a esta página. Consulta al administrador si necesitas acceso.",
+        _ => "No se pudo completar la solicitud. Vuelve a intentarlo."
+    };
+    response.ContentType = "text/plain; charset=utf-8";
+    await response.WriteAsync(message);
+});
 
 app.UseSession();
 app.UseAuthentication();

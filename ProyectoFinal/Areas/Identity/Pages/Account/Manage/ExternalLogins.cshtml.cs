@@ -60,7 +60,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             CurrentLogins = await _userManager.GetLoginsAsync(user);
@@ -83,18 +83,18 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             var result = await _userManager.RemoveLoginAsync(user, loginProvider, providerKey);
             if (!result.Succeeded)
             {
-                StatusMessage = "The external login was not removed.";
+                StatusMessage = "Error: No se pudo quitar el inicio de sesión externo. Vuelve a intentarlo.";
                 return RedirectToPage();
             }
 
             await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "The external login was removed.";
+            StatusMessage = "Se quitó el inicio de sesión externo.";
             return RedirectToPage();
         }
 
@@ -114,7 +114,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             var userId = await _userManager.GetUserIdAsync(user);
@@ -127,14 +127,14 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var result = await _userManager.AddLoginAsync(user, info);
             if (!result.Succeeded)
             {
-                StatusMessage = "The external login was not added. External logins can only be associated with one account.";
+                StatusMessage = "Error: No se pudo agregar el inicio de sesión externo; ya podría estar asociado con otra cuenta.";
                 return RedirectToPage();
             }
 
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-            StatusMessage = "The external login was added.";
+            StatusMessage = "Se agregó el inicio de sesión externo.";
             return RedirectToPage();
         }
     }

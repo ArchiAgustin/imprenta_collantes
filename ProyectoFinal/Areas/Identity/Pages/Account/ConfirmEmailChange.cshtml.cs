@@ -41,14 +41,14 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{userId}'.");
+                return NotFound("No se encontró la cuenta. Solicita un nuevo enlace de confirmación.");
             }
 
             code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
             var result = await _userManager.ChangeEmailAsync(user, email, code);
             if (!result.Succeeded)
             {
-                StatusMessage = "Error changing email.";
+                StatusMessage = "Error: No se pudo cambiar el correo. Vuelve a intentarlo.";
                 return Page();
             }
 
@@ -57,12 +57,12 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account
             var setUserNameResult = await _userManager.SetUserNameAsync(user, email);
             if (!setUserNameResult.Succeeded)
             {
-                StatusMessage = "Error changing user name.";
+                StatusMessage = "Error: No se pudo actualizar el nombre de usuario. Vuelve a intentarlo.";
                 return Page();
             }
 
             await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "Thank you for confirming your email change.";
+            StatusMessage = "Se confirmó el cambio de correo electrónico.";
             return Page();
         }
     }

@@ -78,9 +78,9 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
             [Required]
-            [StringLength(7, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+            [StringLength(7, ErrorMessage = "El código debe tener entre {2} y {1} caracteres.", MinimumLength = 6)]
             [DataType(DataType.Text)]
-            [Display(Name = "Verification Code")]
+            [Display(Name = "Código de verificación")]
             public string Code { get; set; }
         }
 
@@ -89,7 +89,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             await LoadSharedKeyAndQrCodeUriAsync(user);
@@ -102,7 +102,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+                return NotFound("No se encontró la cuenta. Vuelve a iniciar sesión.");
             }
 
             if (!ModelState.IsValid)
@@ -119,7 +119,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
 
             if (!is2faTokenValid)
             {
-                ModelState.AddModelError("Input.Code", "Verification code is invalid.");
+                ModelState.AddModelError("Input.Code", "El código de verificación no es válido. Revisa la aplicación autenticadora.");
                 await LoadSharedKeyAndQrCodeUriAsync(user);
                 return Page();
             }
@@ -128,7 +128,7 @@ namespace ProyectoFinal.Areas.Identity.Pages.Account.Manage
             var userId = await _userManager.GetUserIdAsync(user);
             _logger.LogInformation("User with ID '{UserId}' has enabled 2FA with an authenticator app.", userId);
 
-            StatusMessage = "Your authenticator app has been verified.";
+            StatusMessage = "Se verificó la aplicación autenticadora.";
 
             if (await _userManager.CountRecoveryCodesAsync(user) == 0)
             {
