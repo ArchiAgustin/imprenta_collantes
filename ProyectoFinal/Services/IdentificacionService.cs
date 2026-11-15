@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using ProyectoFinal.Data;
 using ProyectoFinal.Models;
@@ -20,7 +19,7 @@ public sealed class IdentificacionService(ApplicationDbContext db) : IUbigeoCons
         cliente.Correo = string.IsNullOrWhiteSpace(cliente.Correo) ? null : cliente.Correo.Trim();
         cliente.Telefono = string.IsNullOrWhiteSpace(cliente.Telefono) ? null : cliente.Telefono.Trim();
         cliente.Direccion = cliente.Direccion?.Trim();
-        cliente.NumeroDocumento = cliente.NumeroDocumento?.Trim();
+        cliente.NumeroDocumento = ValidadorDocumentoIdentidad.Normalizar(cliente.NumeroDocumento);
         cliente.UbigeoCodigo = string.IsNullOrWhiteSpace(cliente.UbigeoCodigo) ? null : cliente.UbigeoCodigo.Trim();
 
         if (string.IsNullOrWhiteSpace(cliente.Nombre))
@@ -30,8 +29,7 @@ public sealed class IdentificacionService(ApplicationDbContext db) : IUbigeoCons
                 && item.Estado && !item.Eliminado && (item.Codigo == "1" || item.Codigo == "6"));
         if (tipo is null)
             errors.AddModelError(nameof(cliente.IdDocumentoIdentidadTipo), "Selecciona DNI o RUC.");
-        else if (cliente.NumeroDocumento is null || !Regex.IsMatch(cliente.NumeroDocumento,
-            tipo.Codigo == "1" ? @"^[0-9]{8}$" : @"^[0-9]{11}$", RegexOptions.CultureInvariant))
+        else if (!ValidadorDocumentoIdentidad.EsValidoCliente(cliente.NumeroDocumento, tipo.Codigo))
             errors.AddModelError(nameof(cliente.NumeroDocumento), $"Ingresa un {(tipo.Codigo == "1" ? "DNI de 8" : "RUC de 11")} dígitos.");
         else if (await db.Cliente.AnyAsync(item => item.IdDocumentoIdentidadTipo == tipo.IdDocumentoIdentidadTipo
             && item.NumeroDocumento == cliente.NumeroDocumento && item.IdCliente != excluirId))
@@ -47,8 +45,8 @@ public sealed class IdentificacionService(ApplicationDbContext db) : IUbigeoCons
     {
         proveedor.Nombre = proveedor.Nombre?.Trim();
         proveedor.Direccion = proveedor.Direccion?.Trim();
-        proveedor.NumeroDocumento = proveedor.NumeroDocumento?.Trim();
-        proveedor.Ruc = proveedor.Ruc?.Trim();
+        proveedor.NumeroDocumento = ValidadorDocumentoIdentidad.Normalizar(proveedor.NumeroDocumento);
+        proveedor.Ruc = ValidadorDocumentoIdentidad.Normalizar(proveedor.Ruc);
         proveedor.UbigeoCodigo = string.IsNullOrWhiteSpace(proveedor.UbigeoCodigo) ? null : proveedor.UbigeoCodigo.Trim();
         if (string.IsNullOrWhiteSpace(proveedor.Nombre))
             errors.AddModelError(nameof(proveedor.Nombre), "Ingresa el nombre del proveedor.");
@@ -67,8 +65,7 @@ public sealed class IdentificacionService(ApplicationDbContext db) : IUbigeoCons
             errors.AddModelError(nameof(proveedor.NumeroDocumento), "Selecciona un tipo de documento e ingresa un RUC de 11 dígitos.");
         else
         {
-            var longitud = tipo.Codigo switch { "1" => 8, "4" => 9, _ => 11 };
-            if (proveedor.NumeroDocumento is null || !Regex.IsMatch(proveedor.NumeroDocumento, $@"^[0-9]{{{longitud}}}$", RegexOptions.CultureInvariant))
+            if (!ValidadorDocumentoIdentidad.EsValidoProveedor(proveedor.NumeroDocumento, tipo.Codigo, out var longitud))
                 errors.AddModelError(nameof(proveedor.NumeroDocumento), tipo.Codigo == "6" ? "Ingresa un RUC de 11 dígitos." : $"Ingresa un documento de {longitud} dígitos.");
             else if (await db.Proveedor.AnyAsync(item => item.IdDocumentoIdentidadTipo == tipo.IdDocumentoIdentidadTipo
                 && item.NumeroDocumento == proveedor.NumeroDocumento && item.IdProveedor != excluirId))
