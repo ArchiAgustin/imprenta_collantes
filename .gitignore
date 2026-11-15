@@ -12,3 +12,5 @@
 *.ldf
 .env
 Documentacion/prompt_u/
+*.user
+TestResults/
