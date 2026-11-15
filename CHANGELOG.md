@@ -5,6 +5,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [1.0.1] - pendiente de publicación
+
 ### Añadido
 - CR-00: guía de contribución (`CONTRIBUTING.md`), registro de cambios, fichas de solicitudes de cambio en `docs/cambios/` y pipeline de GitHub Actions que ejecuta las pruebas con .NET 8.
 - CR-00: documentación de la arquitectura del módulo de identificación (`docs/arquitectura.md`).
